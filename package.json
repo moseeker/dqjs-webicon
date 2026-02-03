@@ -1,0 +1,47 @@
+{
+  "name": "@dqjs/webicon",
+  "version": "0.0.1",
+  "private": false,
+  "description": "SVG to Lit-based web component icon generator",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./icons/*": {
+      "types": "./dist/icons/*.d.ts",
+      "import": "./dist/icons/*.js",
+      "require": "./dist/cjs/icons/*.cjs"
+    }
+  },
+  "files": [
+    "dist/"
+  ],
+  "scripts": {
+    "build": "npm run lint && npm run generate && tsc && npm run bundle",
+    "build:dev": "npm run build",
+    "dev": "node scripts/dev-server.js",
+    "generate": "node scripts/generate-icons.js",
+    "bundle": "node scripts/bundle.js",
+    "lint": "node scripts/check-duplicate.js",
+    "test": "node scripts/check-duplicate.js",
+    "format": "prettier --write ."
+  },
+  "dependencies": {
+    "lit": "^3.3.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "esbuild": "^0.25.0",
+    "pinyin": "^4.0.0-alpha.2",
+    "simple-git": "^3.30.0",
+    "svgo": "^3.3.2",
+    "typescript": "^5.7.2",
+    "ws": "^8.18.0"
+  }
+}

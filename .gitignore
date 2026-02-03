@@ -1,0 +1,11 @@
+dist/
+*.log
+node_modules/
+.env
+.DS_Store
+
+# Auto-generated icon components
+src/icons/
+
+# Turbo cache
+.turbo/

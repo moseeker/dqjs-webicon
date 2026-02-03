@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>@dqjs/webicon - Dev Server</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 12px;
+      background: #e8e8e8;
+      color: #222;
+      font-size: 13px;
+    }
+    h1 {
+      font-size: 18px;
+      margin-bottom: 4px;
+    }
+    .subtitle {
+      color: #555;
+      font-size: 12px;
+      margin-bottom: 12px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 12px;
+    }
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+    .panel {
+      background: white;
+      border: 1px solid #222;
+      padding: 12px;
+    }
+    h2 {
+      font-size: 14px;
+      margin: 0 0 10px 0;
+      color: #222;
+      border-bottom: 1px solid #222;
+      padding-bottom: 6px;
+    }
+
+    /* Upload Section */
+    .upload-zone {
+      border: 1px dashed #666;
+      padding: 8px 12px;
+      text-align: center;
+      transition: all 0.15s;
+      cursor: pointer;
+      background: #fafafa;
+    }
+    .upload-zone:hover {
+      border-color: #0066cc;
+      background: #f0f8ff;
+    }
+    .upload-zone.dragover {
+      border-color: #0066cc;
+      background: #e3f2fd;
+      border-style: solid;
+    }
+    .upload-zone input { display: none; }
+    .upload-icon {
+      font-size: 18px;
+      margin-bottom: 2px;
+    }
+    .upload-text {
+      font-size: 12px;
+      color: #444;
+      font-weight: 500;
+    }
+    .upload-hint {
+      font-size: 9px;
+      color: #666;
+      margin-top: 2px;
+    }
+
+    /* Target Selection */
+    .target-section {
+      margin-top: 10px;
+    }
+    .target-label {
+      font-size: 11px;
+      font-weight: 700;
+      margin-bottom: 6px;
+      display: block;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .target-options {
+      display: flex;
+      gap: 8px;
+    }
+    .target-option {
+      flex: 1;
+      padding: 8px 10px;
+      border: 1px solid #888;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-align: center;
+      background: white;
+    }
+    .target-option:hover {
+      border-color: #555;
+      background: #f5f5f5;
+    }
+    .target-option.selected {
+      border-color: #0066cc;
+      background: #e6f2ff;
+    }
+    .target-option input {
+      display: none;
+    }
+    .target-name {
+      font-weight: 700;
+      font-size: 12px;
+    }
+    .target-desc {
+      font-size: 9px;
+      color: #555;
+      margin-top: 2px;
+    }
+
+    /* File List */
+    .file-list {
+      margin-top: 10px;
+      max-height: 120px;
+      overflow-y: auto;
+    }
+    .file-item {
+      display: flex;
+      align-items: center;
+      padding: 6px 8px;
+      background: #f0f0f0;
+      border: 1px solid #ccc;
+      margin-bottom: 4px;
+      font-size: 11px;
+    }
+    .file-icon {
+      margin-right: 6px;
+      font-size: 12px;
+    }
+    .file-name {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-weight: 500;
+    }
+    .file-size {
+      color: #555;
+      font-size: 9px;
+    }
+
+    /* Upload Button */
+    .upload-btn {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      background: #0066cc;
+      color: white;
+      border: 1px solid #004499;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .upload-btn:hover:not(:disabled) {
+      background: #0055aa;
+    }
+    .upload-btn:disabled {
+      background: #999;
+      border-color: #777;
+      cursor: not-allowed;
+    }
+
+    /* Status */
+    .status {
+      margin-top: 10px;
+      padding: 8px 10px;
+      border: 1px solid;
+      font-size: 11px;
+      display: none;
+      font-weight: 500;
+    }
+    .status.show { display: block; }
+    .status.info {
+      border-color: #0066cc;
+      background: #e6f2ff;
+      color: #004499;
+    }
+    .status.success {
+      border-color: #2e7d32;
+      background: #e8f5e9;
+      color: #1b5e20;
+    }
+    .status.error {
+      border-color: #c62828;
+      background: #ffebee;
+      color: #b71c1c;
+    }
+
+    /* Preview Section */
+    .preview-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #222;
+    }
+    .preview-controls {
+      display: flex;
+      gap: 6px;
+    }
+    .preview-btn {
+      padding: 4px 10px;
+      font-size: 11px;
+      border: 1px solid #666;
+      background: white;
+      cursor: pointer;
+      font-weight: 500;
+    }
+    .preview-btn:hover {
+      background: #f0f0f0;
+      border-color: #444;
+    }
+    .preview-btn.active {
+      background: #e3f2fd;
+      border-color: #1976d2;
+      color: #0d47a1;
+    }
+    .build-status {
+      font-size: 10px;
+      padding: 3px 10px;
+      border: 1px solid;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .build-status.idle {
+      border-color: #888;
+      background: #f0f0f0;
+      color: #555;
+    }
+    .build-status.building {
+      border-color: #e65100;
+      background: #fff3e0;
+      color: #e65100;
+    }
+    .build-status.success {
+      border-color: #2e7d32;
+      background: #e8f5e9;
+      color: #1b5e20;
+    }
+
+    /* Icons Grid */
+    .icons-empty {
+      text-align: center;
+      padding: 40px 20px;
+      color: #666;
+      font-size: 12px;
+      border: 1px dashed #ccc;
+    }
+    .icons-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      gap: 8px;
+    }
+    .icon-card {
+      background: #fafafa;
+      border: 2px solid;
+      padding: 10px 8px;
+      text-align: center;
+      transition: all 0.15s;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-height: 90px;
+      position: relative;
+    }
+    .icon-card.nocolors {
+      border-color: #1976d2;
+    }
+    .icon-card.nocolors:hover {
+      border-color: #0d47a1;
+      background: #e3f2fd;
+    }
+    .icon-card.colors {
+      border-color: #f57c00;
+    }
+    .icon-card.colors:hover {
+      border-color: #e65100;
+      background: #fff3e0;
+    }
+    .icon-preview {
+      font-size: 28px;
+      margin-bottom: 6px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .icon-name {
+      font-family: monospace;
+      font-size: 9px;
+      color: #333;
+      word-break: break-all;
+      line-height: 1.3;
+    }
+    .icon-delete {
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      width: 18px;
+      height: 18px;
+      font-size: 12px;
+      line-height: 18px;
+      text-align: center;
+      background: #c62828;
+      color: white;
+      border: none;
+      border-radius: 2px;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+    .icon-card:hover .icon-delete {
+      opacity: 1;
+    }
+    .icon-delete:hover {
+      background: #b71c1c;
+    }
+
+    /* Color Demo */
+    .color-demo {
+      margin-bottom: 10px;
+      padding: 10px;
+      background: #f0f0f0;
+      border: 1px solid #888;
+    }
+    .color-demo-title {
+      font-size: 10px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: #444;
+      text-transform: uppercase;
+    }
+    .color-options {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .color-option {
+      width: 24px;
+      height: 24px;
+      border: 1px solid transparent;
+      cursor: pointer;
+    }
+    .color-option:hover {
+      transform: scale(1.1);
+    }
+    .color-option.active {
+      border-color: #222;
+      box-shadow: 0 0 0 1px white, 0 0 0 2px #222;
+    }
+
+    /* Git Section */
+    .git-section {
+      margin-top: 10px;
+      padding: 10px;
+      background: #f5f5f5;
+      border: 1px solid #888;
+    }
+    .git-title {
+      font-size: 10px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: #444;
+      text-transform: uppercase;
+    }
+    .git-sync-status {
+      font-size: 10px;
+      padding: 4px 8px;
+      margin-bottom: 8px;
+      border: 1px solid;
+      text-align: center;
+    }
+    .git-sync-status.synced {
+      border-color: #2e7d32;
+      background: #e8f5e9;
+      color: #1b5e20;
+    }
+    .git-sync-status.ahead {
+      border-color: #f57c00;
+      background: #fff3e0;
+      color: #e65100;
+    }
+    .git-sync-status.behind {
+      border-color: #1976d2;
+      background: #e3f2fd;
+      color: #0d47a1;
+    }
+    .git-sync-status.diverged {
+      border-color: #c62828;
+      background: #ffebee;
+      color: #b71c1c;
+    }
+    .git-status {
+      font-size: 11px;
+      margin-bottom: 8px;
+      max-height: 100px;
+      overflow-y: auto;
+    }
+    .git-status-item {
+      padding: 2px 0;
+      color: #555;
+    }
+    .git-status-item.added {
+      color: #2e7d32;
+    }
+    .git-status-item.deleted {
+      color: #c62828;
+    }
+    .git-status-item.modified {
+      color: #f57c00;
+    }
+    .git-btn {
+      width: 100%;
+      padding: 8px;
+      background: #2e7d32;
+      color: white;
+      border: 1px solid #1b5e20;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      text-transform: uppercase;
+    }
+    .git-btn:hover:not(:disabled) {
+      background: #1b5e20;
+    }
+    .git-btn:disabled {
+      background: #999;
+      border-color: #777;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+  <h1>@dqjs/webicon Dev Server</h1>
+  <p class="subtitle">Upload SVG files, auto-build, and preview instantly</p>
+
+  <div class="grid">
+    <!-- Left Panel: Upload -->
+    <div class="panel">
+      <h2>📤 Upload SVG Files</h2>
+
+      <div class="upload-zone" id="uploadZone">
+        <input type="file" id="fileInput" accept=".svg" multiple>
+        <div class="upload-icon">📁</div>
+        <div class="upload-text">Click or drag SVG files here</div>
+        <div class="upload-hint">Supports multiple files</div>
+      </div>
+
+      <div class="target-section">
+        <label class="target-label">Target Directory</label>
+        <div class="target-options">
+          <label class="target-option selected" data-value="nocolors">
+            <input type="radio" name="targetDir" value="nocolors" checked>
+            <div class="target-name">Nocolors</div>
+            <div class="target-desc">CSS colorable</div>
+          </label>
+          <label class="target-option" data-value="colors">
+            <input type="radio" name="targetDir" value="colors">
+            <div class="target-name">Colors</div>
+            <div class="target-desc">Preserve colors</div>
+          </label>
+        </div>
+      </div>
+
+      <div class="file-list" id="fileList" style="display: none;"></div>
+
+      <button class="upload-btn" id="uploadBtn" disabled>
+        Upload & Build
+      </button>
+
+      <div class="status" id="status"></div>
+
+      <!-- Git Section -->
+      <div class="git-section">
+        <div class="git-title">📦 Git Status</div>
+        <div class="git-sync-status synced" id="gitSyncStatus">Checking...</div>
+        <div class="git-status" id="gitStatus">
+          <div class="git-status-item">Loading...</div>
+        </div>
+        <button class="git-btn" id="commitPushBtn" onclick="commitAndPush()">
+          Commit & Push
+        </button>
+      </div>
+    </div>
+
+    <!-- Right Panel: Preview -->
+    <div class="panel">
+      <div class="preview-header">
+        <h2>👁️ Preview</h2>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span class="build-status idle" id="buildStatus">Idle</span>
+          <div class="preview-controls">
+            <button class="preview-btn" onclick="loadIcons()">🔄 Refresh</button>
+            <button class="preview-btn" onclick="location.reload()">⟳ Reload</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="color-demo">
+        <div class="color-demo-title">Color Demo (for nocolors icons)</div>
+        <div class="color-options" id="colorOptions">
+          <div class="color-option active" style="background: #333" data-color="#333"></div>
+          <div class="color-option" style="background: #e74c3c" data-color="#e74c3c"></div>
+          <div class="color-option" style="background: #3498db" data-color="#3498db"></div>
+          <div class="color-option" style="background: #27ae60" data-color="#27ae60"></div>
+          <div class="color-option" style="background: #9b59b6" data-color="#9b59b6"></div>
+          <div class="color-option" style="background: #f39c12" data-color="#f39c12"></div>
+          <div class="color-option" style="background: #1abc9c" data-color="#1abc9c"></div>
+        </div>
+      </div>
+
+      <div id="iconsContainer">
+        <div class="icons-empty">No icons yet. Upload some SVG files!</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Load the icon bundle (with cache busting) -->
+  <script>
+    // Dynamic script loading to prevent caching during development
+    const script = document.createElement('script');
+    script.src = '/dist/webicon.min.js?v=' + Date.now();
+    script.onload = () => {
+      // Initialize after bundle is loaded
+      connectWebSocket();
+      loadIcons();
+    };
+    document.head.appendChild(script);
+  </script>
+
+  <script>
+    // State
+    let selectedFiles = [];
+    let ws = null;
+    let currentColor = '#333';
+
+
+    // DOM elements
+    const uploadZone = document.getElementById('uploadZone');
+    const fileInput = document.getElementById('fileInput');
+    const fileList = document.getElementById('fileList');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const status = document.getElementById('status');
+    const buildStatus = document.getElementById('buildStatus');
+    const targetOptions = document.querySelectorAll('.target-option');
+    const colorOptions = document.querySelectorAll('.color-option');
+
+    // Target selection
+    targetOptions.forEach(opt => {
+      opt.addEventListener('click', () => {
+        targetOptions.forEach(o => o.classList.remove('selected'));
+        opt.classList.add('selected');
+      });
+    });
+
+    // Color selection
+    colorOptions.forEach(opt => {
+      opt.addEventListener('click', () => {
+        colorOptions.forEach(o => o.classList.remove('active'));
+        opt.classList.add('active');
+        currentColor = opt.dataset.color;
+        updateIconColors();
+      });
+    });
+
+    function updateIconColors() {
+      // Select all custom icon elements by tag name
+      document.querySelectorAll('.icon-preview > *').forEach(icon => {
+        icon.style.color = currentColor;
+      });
+    }
+
+    // File upload handling
+    uploadZone.addEventListener('click', () => fileInput.click());
+
+    uploadZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadZone.classList.add('dragover');
+    });
+
+    uploadZone.addEventListener('dragleave', () => {
+      uploadZone.classList.remove('dragover');
+    });
+
+    uploadZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadZone.classList.remove('dragover');
+      const files = Array.from(e.dataTransfer.files).filter(f => f.name.endsWith('.svg'));
+      handleFiles(files);
+    });
+
+    fileInput.addEventListener('change', () => {
+      handleFiles(Array.from(fileInput.files));
+    });
+
+    function handleFiles(files) {
+      selectedFiles = files;
+      updateFileList();
+      uploadBtn.disabled = files.length === 0;
+    }
+
+    function updateFileList() {
+      if (selectedFiles.length === 0) {
+        fileList.style.display = 'none';
+        return;
+      }
+
+      fileList.innerHTML = selectedFiles.map(file => `
+        <div class="file-item">
+          <span class="file-icon">📄</span>
+          <span class="file-name">${file.name}</span>
+          <span class="file-size">${formatSize(file.size)}</span>
+        </div>
+      `).join('');
+      fileList.style.display = 'block';
+    }
+
+    function formatSize(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      return (bytes / 1024).toFixed(1) + ' KB';
+    }
+
+    // Upload
+    uploadBtn.addEventListener('click', async () => {
+      if (selectedFiles.length === 0) return;
+
+      const targetDir = document.querySelector('input[name="targetDir"]:checked').value;
+      const formData = new FormData();
+      formData.append('targetDir', targetDir);
+      selectedFiles.forEach(file => formData.append('files', file));
+
+      uploadBtn.disabled = true;
+      showStatus('Uploading...', 'info');
+
+      try {
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData
+        });
+
+        const result = await res.json();
+
+        if (result.success) {
+          showStatus(`Uploaded ${result.files.length} file(s) to ${result.targetDir}/. Building...`, 'success');
+          setBuildStatus('building');
+          selectedFiles = [];
+          updateFileList();
+          loadGitStatus();
+        } else {
+          showStatus(result.error || 'Upload failed', 'error');
+          uploadBtn.disabled = false;
+        }
+      } catch (err) {
+        showStatus('Upload error: ' + err.message, 'error');
+        uploadBtn.disabled = false;
+      }
+    });
+
+    function showStatus(message, type) {
+      status.textContent = message;
+      status.className = 'status show ' + type;
+    }
+
+    function setBuildStatus(state) {
+      buildStatus.className = 'build-status ' + state;
+      switch (state) {
+        case 'building':
+          buildStatus.textContent = 'Building...';
+          break;
+        case 'success':
+          buildStatus.textContent = '✓ Built';
+          setTimeout(() => setBuildStatus('idle'), 2000);
+          break;
+        default:
+          buildStatus.textContent = 'Idle';
+      }
+    }
+
+    // Load and display icons (only git changed by default)
+    async function loadIcons() {
+      try {
+        const res = await fetch('/api/icons');
+        const data = await res.json();
+
+        const container = document.getElementById('iconsContainer');
+
+        if (data.icons.length === 0) {
+          container.innerHTML = '<div class="icons-empty">No icons yet. Upload some SVG files!</div>';
+          return;
+        }
+
+        container.innerHTML = `
+          <div class="icons-grid">
+            ${data.icons.map(icon => `
+              <div class="icon-card ${icon.type}">
+                <button class="icon-delete" onclick="deleteIcon('${icon.name}', '${icon.type}')" title="Delete">×</button>
+                <div class="icon-preview" style="color: ${currentColor}">
+                  ${getIconElement(icon.name)}
+                </div>
+                <div class="icon-name">&lt;${toTagName(icon.name)}&gt;</div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+
+        updateIconColors();
+      } catch (err) {
+        console.error('Failed to load icons:', err);
+      }
+    }
+
+    function toTagName(filename) {
+      const name = filename.replace('.svg', '');
+      return 'qx-icon-' + name.toLowerCase();
+    }
+
+    function getIconElement(filename) {
+      const name = filename.replace('.svg', '');
+      const tagName = 'qx-icon-' + name.toLowerCase();
+      return `<${tagName}></${tagName}>`;
+    }
+
+    // Delete icon (only works for git changed files)
+    async function deleteIcon(filename, type) {
+      if (!confirm(`Delete "${filename}"?\n\nOnly git changed files can be deleted.`)) {
+        return;
+      }
+      try {
+        const res = await fetch('/api/icons/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename, type })
+        });
+        const result = await res.json();
+        if (result.success) {
+          showStatus(`Deleted ${filename}`, 'success');
+          loadIcons();
+          loadGitStatus();
+        } else {
+          showStatus(result.error || 'Delete failed', 'error');
+        }
+      } catch (err) {
+        showStatus('Delete error: ' + err.message, 'error');
+      }
+    }
+
+    // Load git status
+    async function loadGitStatus() {
+      try {
+        const res = await fetch('/api/git/status');
+        const data = await res.json();
+
+        const container = document.getElementById('gitStatus');
+        const btn = document.getElementById('commitPushBtn');
+        const syncContainer = document.getElementById('gitSyncStatus');
+
+        const { added = [], modified = [], deleted = [], untracked = [] } = data.status || {};
+        const allFiles = [...added, ...untracked, ...modified, ...deleted];
+
+        // Update sync status
+        const sync = data.sync || {};
+        if (sync.error) {
+          syncContainer.textContent = 'Git sync unavailable';
+          syncContainer.className = 'git-sync-status';
+        } else if (sync.synced) {
+          syncContainer.textContent = '✓ In sync with remote';
+          syncContainer.className = 'git-sync-status synced';
+        } else if (sync.ahead > 0 && sync.behind > 0) {
+          syncContainer.textContent = `⚠ Diverged: ${sync.ahead} ahead, ${sync.behind} behind`;
+          syncContainer.className = 'git-sync-status diverged';
+        } else if (sync.ahead > 0) {
+          syncContainer.textContent = `↑ ${sync.ahead} commit(s) to push`;
+          syncContainer.className = 'git-sync-status ahead';
+        } else if (sync.behind > 0) {
+          syncContainer.textContent = `↓ ${sync.behind} commit(s) to pull`;
+          syncContainer.className = 'git-sync-status behind';
+        } else {
+          syncContainer.textContent = '✓ In sync with remote';
+          syncContainer.className = 'git-sync-status synced';
+        }
+
+        if (allFiles.length === 0) {
+          container.innerHTML = '<div class="git-status-item">No changes</div>';
+          btn.disabled = true;
+          btn.textContent = 'No Changes';
+          return;
+        }
+
+        let html = '';
+
+        if (added.length > 0 || untracked.length > 0) {
+          const files = [...added, ...untracked];
+          html += `<div class="git-status-item added">+ ${files.length} new</div>`;
+        }
+
+        if (modified.length > 0) {
+          html += `<div class="git-status-item modified">~ ${modified.length} modified</div>`;
+        }
+
+        if (deleted.length > 0) {
+          html += `<div class="git-status-item deleted">- ${deleted.length} deleted</div>`;
+        }
+
+        container.innerHTML = html;
+        btn.disabled = false;
+        btn.textContent = `Commit & Push (${allFiles.length})`;
+      } catch (err) {
+        console.error('Git status error:', err);
+        document.getElementById('gitStatus').innerHTML = '<div class="git-status-item">Git status unavailable</div>';
+        document.getElementById('gitSyncStatus').textContent = 'Git unavailable';
+        document.getElementById('gitSyncStatus').className = 'git-sync-status';
+      }
+    }
+
+    // Commit and push
+    async function commitAndPush() {
+      const btn = document.getElementById('commitPushBtn');
+      if (btn.disabled) return;
+
+      btn.disabled = true;
+      btn.textContent = 'Committing...';
+      setBuildStatus('building');
+
+      try {
+        const res = await fetch('/api/git/commit-push', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+
+        const result = await res.json();
+
+        if (result.success) {
+          showStatus(`Committed: ${result.summary}`, 'success');
+          loadGitStatus();
+          loadIcons();
+        } else {
+          showStatus(result.message || 'Commit failed', 'error');
+          btn.disabled = false;
+          loadGitStatus();
+        }
+      } catch (err) {
+        showStatus('Commit error: ' + err.message, 'error');
+        btn.disabled = false;
+        loadGitStatus();
+      }
+    }
+
+    // WebSocket connection
+    function connectWebSocket() {
+      const wsUrl = `ws://${location.host}`;
+      ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        console.log('WebSocket connected');
+      };
+
+      ws.onmessage = (e) => {
+        const msg = JSON.parse(e.data);
+        console.log('WS message:', msg);
+
+        switch (msg.type) {
+          case 'build-start':
+            setBuildStatus('building');
+            break;
+          case 'build-complete':
+            setBuildStatus('success');
+            if (msg.success) {
+              reloadScriptAndRefresh();
+            } else {
+              showStatus('Build failed: ' + msg.error, 'error');
+            }
+            break;
+        }
+      };
+
+      ws.onclose = () => {
+        console.log('WebSocket closed, reconnecting...');
+        setTimeout(connectWebSocket, 2000);
+      };
+    }
+
+    function reloadScriptAndRefresh() {
+      const oldScript = document.querySelector('script[src="/dist/webicon.min.js"]');
+      if (oldScript) oldScript.remove();
+
+      const script = document.createElement('script');
+      script.src = '/dist/webicon.min.js?' + Date.now();
+      script.onload = () => {
+        loadIcons();
+        showStatus('Build complete! Icons refreshed.', 'success');
+        setTimeout(() => uploadBtn.disabled = false, 500);
+      };
+      document.body.appendChild(script);
+    }
+
+    // Initialize is called after bundle script loads
+    loadGitStatus();
+
+    // Refresh git status periodically
+    setInterval(loadGitStatus, 5000);
+  </script>
+</body>
+</html>
