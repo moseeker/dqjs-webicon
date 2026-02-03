@@ -264,30 +264,49 @@ async function getDetailedGitStatus() {
 
 /**
  * Generate commit message based on git status
+ * Limits file list to avoid overly long commit messages
  */
 async function generateCommitMessage() {
   const status = await getDetailedGitStatus();
 
   const sections = [];
+  const MAX_FILES_TO_LIST = 5; // Maximum files to list by name
 
   if (status.added.length > 0 || status.untracked.length > 0) {
     const files = [...status.added, ...status.untracked];
-    sections.push(`新增 ${files.length} 个图标: ${files.join(', ')}`);
+    const fileList = formatFileList(files, MAX_FILES_TO_LIST);
+    sections.push(`新增 ${files.length} 个图标: ${fileList}`);
   }
 
   if (status.modified.length > 0) {
-    sections.push(`更新 ${status.modified.length} 个图标: ${status.modified.join(', ')}`);
+    const fileList = formatFileList(status.modified, MAX_FILES_TO_LIST);
+    sections.push(`更新 ${status.modified.length} 个图标: ${fileList}`);
   }
 
   if (status.deleted.length > 0) {
-    sections.push(`删除 ${status.deleted.length} 个图标: ${status.deleted.join(', ')}`);
+    const fileList = formatFileList(status.deleted, MAX_FILES_TO_LIST);
+    sections.push(`删除 ${status.deleted.length} 个图标: ${fileList}`);
   }
 
   if (sections.length === 0) {
-    return '更新图标';
+    return '[icon]: 更新图标';
   }
 
-  return sections.join('\n');
+  return '[icon]: ' + sections.join('; ');
+}
+
+/**
+ * Format file list for commit message
+ * Shows up to maxFiles names, then "等 N 个" for remaining
+ */
+function formatFileList(files, maxFiles = 5) {
+  if (files.length <= maxFiles) {
+    return files.join(', ');
+  }
+  
+  const shown = files.slice(0, maxFiles);
+  const remaining = files.length - maxFiles;
+  return `${shown.join(', ')} 等 ${remaining} 个`;
 }
 
 /**
@@ -384,9 +403,9 @@ async function getSyncStatus() {
 
 /**
  * Get list of current icons
- * @param {boolean} onlyGitChanged - Only return icons that have git changes
+ * @param {boolean} onlyGitChanged - Only return icons that have git changes (default: true)
  */
-async function getIconsList(onlyGitChanged = false) {
+async function getIconsList(onlyGitChanged = true) {
   const icons = [];
   const nocolorsDir = join(ROOT_DIR, 'svg', 'nocolors');
   const colorsDir = join(ROOT_DIR, 'svg', 'colors');
@@ -395,10 +414,7 @@ async function getIconsList(onlyGitChanged = false) {
   let changedFiles = null;
   if (onlyGitChanged) {
     changedFiles = await getGitStatusFiles();
-    // If no git changes detected, fall back to showing all
-    if (changedFiles.size === 0) {
-      changedFiles = null;
-    }
+    // No fallback - if no git changes, return empty list
   }
 
   if (existsSync(nocolorsDir)) {
@@ -487,7 +503,7 @@ const server = createServer(async (req, res) => {
   // API: Get icons list (default: only git changed)
   if (pathname === '/api/icons' && req.method === 'GET') {
     const showAll = url.searchParams.get('all') === '1';
-    const icons = await getIconsList(!showAll);
+    const icons = await getIconsList(!showAll);  // default: onlyGitChanged=true
     sendJSON(res, 200, { icons, filter: showAll ? 'all' : 'git-changed' });
     return;
   }

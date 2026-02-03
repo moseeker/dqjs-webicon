@@ -144,16 +144,53 @@
       margin-right: 6px;
       font-size: 12px;
     }
+    .file-size {
+      color: #555;
+      font-size: 9px;
+    }
+    .file-remove {
+      margin-left: 8px;
+      padding: 0 6px;
+      background: #c62828;
+      color: white;
+      border: none;
+      border-radius: 2px;
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 1;
+    }
+    .file-remove:hover {
+      background: #b71c1c;
+    }
     .file-name {
       flex: 1;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
       font-weight: 500;
+      cursor: pointer;
+      padding: 2px 4px;
+      border-radius: 2px;
     }
-    .file-size {
-      color: #555;
-      font-size: 9px;
+    .file-name:hover {
+      background: #e0e0e0;
+    }
+    .file-name-input {
+      flex: 1;
+      font-size: 11px;
+      padding: 2px 4px;
+      border: 1px solid #0066cc;
+      border-radius: 2px;
+      outline: none;
+    }
+    .file-name-input.invalid {
+      border-color: #c62828;
+      background: #ffebee;
+    }
+    .file-ext {
+      color: #888;
+      font-size: 10px;
+      margin-left: 2px;
     }
 
     /* Upload Button */
@@ -614,9 +651,45 @@
     });
 
     function handleFiles(files) {
-      selectedFiles = files;
+      // Append new files to existing selection (prevent duplicates by name)
+      const existingNames = new Set(selectedFiles.map(f => f.name));
+      const newFiles = files.filter(f => !existingNames.has(f.name));
+      selectedFiles = [...selectedFiles, ...newFiles];
       updateFileList();
-      uploadBtn.disabled = files.length === 0;
+      uploadBtn.disabled = selectedFiles.length === 0;
+    }
+
+    // Validate filename for safe component generation
+    // Rules: starts with letter, only alphanumeric and hyphen, no consecutive hyphens
+    function isValidFileName(name) {
+      // Must start with a letter
+      if (!/^[a-zA-Z]/.test(name)) return false;
+      // Only letters, numbers, and hyphens
+      if (!/^[a-zA-Z0-9-]+$/.test(name)) return false;
+      // No consecutive hyphens
+      if (/--/.test(name)) return false;
+      // Not end with hyphen
+      if (name.endsWith('-')) return false;
+      // Minimum length 1
+      if (name.length < 1) return false;
+      return true;
+    }
+
+    // Convert filename to safe name (pinyin conversion simulation)
+    function toSafeFileName(name) {
+      // Replace unsafe characters with hyphen
+      let result = name
+        .replace(/[^a-zA-Z0-9]+/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/-$/, '')
+        .replace(/^-/, '');
+      
+      // Ensure starts with letter
+      if (!/^[a-zA-Z]/.test(result)) {
+        result = 'icon-' + result;
+      }
+      
+      return result.toLowerCase();
     }
 
     function updateFileList() {
@@ -625,15 +698,114 @@
         return;
       }
 
-      fileList.innerHTML = selectedFiles.map(file => `
-        <div class="file-item">
-          <span class="file-icon">📄</span>
-          <span class="file-name">${file.name}</span>
-          <span class="file-size">${formatSize(file.size)}</span>
+      fileList.innerHTML = selectedFiles.map((file, index) => {
+        const baseName = file.name.replace(/\.svg$/i, '');
+        return `
+          <div class="file-item" data-index="${index}">
+            <span class="file-icon">📄</span>
+            <span class="file-name" onclick="startEditFileName(${index})" title="Click to edit">${baseName}</span><span class="file-ext">.svg</span>
+            <span class="file-size">${formatSize(file.size)}</span>
+            <button class="file-remove" onclick="removeFile(${index})" title="Remove">×</button>
+          </div>
+        `;
+      }).join('') + `
+        <div style="text-align: center; margin-top: 8px;">
+          <button class="preview-btn" onclick="clearAllFiles()">Clear All</button>
         </div>
-      `).join('');
+      `;
       fileList.style.display = 'block';
     }
+
+    // Start editing filename
+    window.startEditFileName = function(index) {
+      const fileItem = fileList.querySelector(`[data-index="${index}"]`);
+      if (!fileItem) return;
+      
+      const nameSpan = fileItem.querySelector('.file-name');
+      const extSpan = fileItem.querySelector('.file-ext');
+      const currentName = selectedFiles[index].name.replace(/\.svg$/i, '');
+      
+      // Hide extension during edit
+      extSpan.style.display = 'none';
+      
+      // Create input
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'file-name-input';
+      input.value = currentName;
+      input.placeholder = 'icon-name';
+      
+      // Replace span with input
+      nameSpan.replaceWith(input);
+      input.focus();
+      input.select();
+      
+      // Validation function
+      const validate = () => {
+        const newName = input.value.trim();
+        const safeName = toSafeFileName(newName);
+        
+        if (!isValidFileName(safeName)) {
+          input.classList.add('invalid');
+          return null;
+        }
+        input.classList.remove('invalid');
+        return safeName;
+      };
+      
+      // Save on blur or enter
+      const save = () => {
+        const safeName = validate();
+        if (safeName) {
+          // Check for duplicate names
+          const newFullName = safeName + '.svg';
+          const existingIndex = selectedFiles.findIndex((f, i) => i !== index && f.name === newFullName);
+          if (existingIndex !== -1) {
+            alert(`Filename "${newFullName}" already exists in the list.`);
+            input.focus();
+            return;
+          }
+          
+          // Update file name (create new File object)
+          const oldFile = selectedFiles[index];
+          const newFile = new File([oldFile], newFullName, { type: oldFile.type });
+          selectedFiles[index] = newFile;
+        }
+        updateFileList();
+      };
+      
+      // Cancel on escape
+      const cancel = () => {
+        updateFileList();
+      };
+      
+      input.addEventListener('blur', save);
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          input.blur();
+        } else if (e.key === 'Escape') {
+          cancel();
+        } else {
+          // Real-time validation
+          setTimeout(validate, 0);
+        }
+      });
+    };
+
+    // Remove single file from selection
+    window.removeFile = function(index) {
+      selectedFiles.splice(index, 1);
+      updateFileList();
+      uploadBtn.disabled = selectedFiles.length === 0;
+    };
+
+    // Clear all selected files
+    window.clearAllFiles = function() {
+      selectedFiles = [];
+      updateFileList();
+      uploadBtn.disabled = true;
+      fileInput.value = ''; // Reset file input
+    };
 
     function formatSize(bytes) {
       if (bytes < 1024) return bytes + ' B';
@@ -663,8 +835,7 @@
         if (result.success) {
           showStatus(`Uploaded ${result.files.length} file(s) to ${result.targetDir}/. Building...`, 'success');
           setBuildStatus('building');
-          selectedFiles = [];
-          updateFileList();
+          clearAllFiles(); // Clear selection and reset input
           loadGitStatus();
           // Refresh icons to show new uploads immediately
           setTimeout(() => loadIcons(), 100);
@@ -707,7 +878,7 @@
         const container = document.getElementById('iconsContainer');
 
         if (data.icons.length === 0) {
-          container.innerHTML = '<div class="icons-empty">No icons yet. Upload some SVG files!</div>';
+          container.innerHTML = '<div class="icons-empty">No pending changes.<br>Upload new icons to see them here.</div>';
           return;
         }
 
