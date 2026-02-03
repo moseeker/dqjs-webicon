@@ -28,6 +28,7 @@
     "dev": "node scripts/dev-server.js",
     "generate": "node scripts/generate-icons.js",
     "bundle": "node scripts/bundle.js",
+    "preview": "node scripts/generate-preview.js",
     "lint": "node scripts/check-duplicate.js",
     "test": "node scripts/check-duplicate.js",
     "format": "prettier --write ."

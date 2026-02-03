@@ -7,5 +7,8 @@ node_modules/
 # Auto-generated icon components
 src/icons/
 
+# Auto-generated preview page
+preview/
+
 # Turbo cache
 .turbo/
