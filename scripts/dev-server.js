@@ -311,6 +311,7 @@ function formatFileList(files, maxFiles = 5) {
 
 /**
  * Commit and push changes
+ * If remote has updates, will rebase local commits on top
  */
 async function commitAndPush(customMessage = null) {
   try {
@@ -333,6 +334,34 @@ async function commitAndPush(customMessage = null) {
 
     if (!commitResult.commit) {
       return { success: false, message: 'Commit failed' };
+    }
+
+    // Fetch latest from remote
+    await git.fetch();
+
+    // Check if we're behind remote
+    const syncStatus = await getSyncStatus();
+    
+    if (syncStatus.behind > 0) {
+      console.log(`📥 Behind remote by ${syncStatus.behind} commit(s), rebasing...`);
+      try {
+        // Pull with rebase to put our commits on top
+        await git.pull(['--rebase']);
+        console.log('✅ Rebase successful');
+      } catch (rebaseErr) {
+        // Rebase conflict - abort and return error
+        console.error('❌ Rebase failed:', rebaseErr.message);
+        try {
+          await git.rebase(['--abort']);
+        } catch (abortErr) {
+          // Ignore abort errors
+        }
+        return { 
+          success: false, 
+          message: 'Rebase 冲突，请手动解决后重试',
+          error: rebaseErr.message
+        };
+      }
     }
 
     // Push

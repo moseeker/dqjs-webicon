@@ -12,6 +12,7 @@ export { QxIconArrowLeft } from './icons/arrow-left.js';
 export { QxIconChevronRight } from './icons/chevron-right.js';
 export { QxIconDownResumeV2 } from './icons/down-resume-v2.js';
 export { QxIconEditFile } from './icons/edit-file.js';
+export { QxIconFire } from './icons/fire.js';
 export { QxIconGongzuotaiWorkbench } from './icons/gongzuotai-workbench.js';
 export { QxIconPrinter } from './icons/printer.js';
 export { QxIconCheckCircleGreen } from './icons/check-circle-green.js';
