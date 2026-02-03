@@ -222,7 +222,7 @@ async function getGitStatusFiles() {
  */
 async function getDetailedGitStatus() {
   try {
-    const status = await git.status(['svg/']);
+    const status = await git.status();
 
     const svgFiles = {
       added: [],    // A - new files staged
@@ -360,30 +360,21 @@ async function getSyncStatus() {
       return { synced: true, error: 'Not on any branch' };
     }
 
-    // Get tracking branch info
-    const branchSummary = await git.branch(['-vv']);
-    const currentBranchInfo = branchSummary.branches[currentBranch];
-
-    if (!currentBranchInfo || !currentBranchInfo.tracking) {
-      // No upstream configured
+    // Check if tracking branch exists
+    if (!status.tracking) {
       return { synced: true, error: 'No upstream configured' };
     }
 
-    // Parse ahead/behind from branch info
-    // Format: "[ahead 2, behind 1]" or "[ahead 3]" or "[behind 2]"
-    const tracking = currentBranchInfo.label || '';
-    const aheadMatch = tracking.match(/ahead\s+(\d+)/);
-    const behindMatch = tracking.match(/behind\s+(\d+)/);
-
-    const ahead = aheadMatch ? parseInt(aheadMatch[1], 10) : 0;
-    const behind = behindMatch ? parseInt(behindMatch[1], 10) : 0;
+    // Get ahead/behind counts from status
+    const ahead = status.ahead || 0;
+    const behind = status.behind || 0;
 
     return {
       synced: ahead === 0 && behind === 0,
       ahead,
       behind,
       branch: currentBranch,
-      tracking: currentBranchInfo.tracking
+      tracking: status.tracking
     };
   } catch (err) {
     console.error('Sync status error:', err.message);

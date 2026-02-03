@@ -666,6 +666,8 @@
           selectedFiles = [];
           updateFileList();
           loadGitStatus();
+          // Refresh icons to show new uploads immediately
+          setTimeout(() => loadIcons(), 100);
         } else {
           showStatus(result.error || 'Upload failed', 'error');
           uploadBtn.disabled = false;
@@ -885,9 +887,11 @@
           case 'build-complete':
             setBuildStatus('success');
             if (msg.success) {
-              reloadScriptAndRefresh();
+              // Delay slightly to ensure file system has settled
+              setTimeout(() => reloadScriptAndRefresh(), 500);
             } else {
               showStatus('Build failed: ' + msg.error, 'error');
+              uploadBtn.disabled = false;
             }
             break;
         }
@@ -900,17 +904,26 @@
     }
 
     function reloadScriptAndRefresh() {
-      const oldScript = document.querySelector('script[src="/dist/webicon.min.js"]');
-      if (oldScript) oldScript.remove();
+      // Remove old script (match by base URL, ignoring query params)
+      const oldScripts = document.querySelectorAll('script');
+      oldScripts.forEach(s => {
+        if (s.src && s.src.includes('/dist/webicon.min.js')) {
+          s.remove();
+        }
+      });
 
-      const script = document.createElement('script');
-      script.src = '/dist/webicon.min.js?' + Date.now();
-      script.onload = () => {
-        loadIcons();
-        showStatus('Build complete! Icons refreshed.', 'success');
-        setTimeout(() => uploadBtn.disabled = false, 500);
-      };
-      document.body.appendChild(script);
+      // Small delay to ensure cleanup
+      setTimeout(() => {
+        const script = document.createElement('script');
+        script.src = '/dist/webicon.min.js?v=' + Date.now();
+        script.onload = () => {
+          loadIcons();
+          loadGitStatus();
+          showStatus('Build complete! Icons refreshed.', 'success');
+          setTimeout(() => uploadBtn.disabled = false, 500);
+        };
+        document.body.appendChild(script);
+      }, 100);
     }
 
     // Initialize is called after bundle script loads
