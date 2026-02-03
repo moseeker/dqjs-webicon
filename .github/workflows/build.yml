@@ -1,7 +1,8 @@
 # Build workflow - compiles icons and uploads artifacts
 #
-# Triggers on push to main branch
+# Triggers on push to main branch when SVG files change
 # Uploads build artifacts for other workflows to consume
+# Sends notification with [icon]: commits to WeChat webhook
 
 name: Build
 
@@ -9,6 +10,8 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'svg/**/*.svg'
   # Allow manual trigger
   workflow_dispatch:
 
@@ -19,6 +22,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 20  # Fetch enough history for commit messages
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -60,3 +65,44 @@ jobs:
             dist/
             preview/
           retention-days: 3
+
+      - name: Send notification
+        if: ${{ success() }}
+        env:
+          WEBHOOK_KEY: ${{ secrets.WEBHOOK_NOTIFY_API_KEY }}
+        run: |
+          # Skip if no webhook key configured
+          if [ -z "$WEBHOOK_KEY" ]; then
+            echo "No webhook key configured, skipping notification"
+            exit 0
+          fi
+
+          # Extract [icon]: commits from recent history
+          ICON_COMMITS=$(git log -10 --no-merges --pretty=format:"%an - %s" | grep -E "\[icon\]:" || true)
+
+          if [ -z "$ICON_COMMITS" ]; then
+            echo "No [icon]: commits found, skipping notification"
+            exit 0
+          fi
+
+          # Build message
+          MESSAGE="🎨 图标更新已部署\n\n📝 变更记录:\n${ICON_COMMITS}\n\n🔗 预览: https://moseeker.github.io/dqjs-webicon/"
+
+          # Construct JSON payload
+          DATA=$(cat <<EOF
+          {
+            "msgtype": "text",
+            "text": {
+              "content": "${MESSAGE}"
+            }
+          }
+          EOF
+          )
+
+          # Send notification
+          curl -s -X POST \
+            -H "Content-Type: application/json" \
+            -d "$DATA" \
+            "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=${WEBHOOK_KEY}"
+
+          echo "Notification sent!"
