@@ -188,7 +188,6 @@ export class ${componentName} extends LitElement {
       width: 100%;
       height: 100%;
       fill: currentColor;
-      stroke: currentColor;
       display: block;
     }
   \`;

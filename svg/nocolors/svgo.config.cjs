@@ -25,7 +25,7 @@ module.exports = {
     'removeStyleElement',
     // Custom plugin to handle fill/stroke attributes for nocolors icons:
     // 1. Remove fill colors from paths (let CSS control via currentColor)
-    // 2. Remove stroke colors (let CSS control via currentColor)
+    // 2. Replace stroke colors with "currentColor" (so CSS color property controls it)
     // 3. Keep/add fill="none" on stroke-based elements to prevent CSS fill
     {
       name: 'handleColorsForNocolors',
@@ -35,9 +35,9 @@ module.exports = {
             const fill = node.attributes.fill;
             const stroke = node.attributes.stroke;
             
-            // Remove stroke color (let CSS control it)
+            // Replace stroke color with currentColor (not remove, so CSS doesn't add stroke to all elements)
             if (stroke && stroke !== 'none') {
-              delete node.attributes.stroke;
+              node.attributes.stroke = 'currentColor';
             }
             
             // If element has stroke-width (stroke element), ensure fill="none"
