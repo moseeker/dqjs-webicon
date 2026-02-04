@@ -17,7 +17,7 @@
  *   - SVG file: `arrow-left.svg` → Component: `QxIconArrowLeft` → Tag: `<qx-icon-arrow-left>`
  */
 
-import { readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync, rmSync } from 'node:fs';
 import { join, basename, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { optimize, loadConfig } from 'svgo';
@@ -322,8 +322,15 @@ async function processDirectory(dir, type, icons) {
 async function main() {
   console.log('🔍 Generating icon components...');
 
-  // Ensure output directory exists
-  if (!existsSync(OUTPUT_DIR)) {
+  // Clean and recreate output directory
+  if (existsSync(OUTPUT_DIR)) {
+    // Remove all .ts files to clean up stale icons
+    const existingFiles = readdirSync(OUTPUT_DIR).filter(f => f.endsWith('.ts'));
+    for (const file of existingFiles) {
+      rmSync(join(OUTPUT_DIR, file));
+    }
+    console.log(`  🧹 Cleaned ${existingFiles.length} existing icon file(s)`);
+  } else {
     mkdirSync(OUTPUT_DIR, { recursive: true });
   }
 

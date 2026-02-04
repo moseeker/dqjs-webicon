@@ -947,8 +947,9 @@
         const btn = document.getElementById('commitPushBtn');
         const syncContainer = document.getElementById('gitSyncStatus');
 
-        const { added = [], modified = [], deleted = [], untracked = [] } = data.status || {};
-        const allFiles = [...added, ...untracked, ...modified, ...deleted];
+        const { added = [], modified = [], deleted = [], renamed = [], untracked = [] } = data.status || {};
+        const renamedFiles = renamed.map(r => r.to);  // Use the new filename
+        const allFiles = [...added, ...untracked, ...modified, ...deleted, ...renamedFiles];
 
         // Update sync status
         const sync = data.sync || {};
@@ -992,6 +993,10 @@
 
         if (deleted.length > 0) {
           html += `<div class="git-status-item deleted">- ${deleted.length} deleted</div>`;
+        }
+
+        if (renamed.length > 0) {
+          html += `<div class="git-status-item modified">↔ ${renamed.length} moved</div>`;
         }
 
         container.innerHTML = html;

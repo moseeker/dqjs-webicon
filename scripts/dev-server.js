@@ -209,6 +209,14 @@ async function getGitStatusFiles() {
         files.add(basename);
       });
 
+    // Include renamed files (use the new name)
+    status.renamed
+      .filter(r => r.to.endsWith('.svg'))
+      .forEach(r => {
+        const basename = r.to.split('/').pop();
+        files.add(basename);
+      });
+
     return files;
   } catch (err) {
     console.error('Git status error:', err.message);
@@ -255,6 +263,18 @@ async function getDetailedGitStatus() {
       if (f.endsWith('.svg')) svgFiles.untracked.push(getBaseName(f));
     });
 
+    // Renamed files (R - moved/renamed)
+    status.renamed.forEach(r => {
+      if (r.to.endsWith('.svg')) {
+        svgFiles.renamed.push({
+          from: getBaseName(r.from),
+          to: getBaseName(r.to),
+          fromPath: r.from,
+          toPath: r.to,
+        });
+      }
+    });
+
     return svgFiles;
   } catch (err) {
     console.error('Git status error:', err.message);
@@ -286,6 +306,25 @@ async function generateCommitMessage() {
   if (status.deleted.length > 0) {
     const fileList = formatFileList(status.deleted, MAX_FILES_TO_LIST);
     sections.push(`删除 ${status.deleted.length} 个图标: ${fileList}`);
+  }
+
+  if (status.renamed.length > 0) {
+    // Format renamed files - show directory change if filename is same
+    const renamedDescriptions = status.renamed.map(r => {
+      if (r.from === r.to) {
+        // Same filename, show directory change (e.g., "fire.svg (nocolors → colors)")
+        const fromDir = r.fromPath.split('/').slice(-2, -1)[0] || '';
+        const toDir = r.toPath.split('/').slice(-2, -1)[0] || '';
+        return `${r.from} (${fromDir} → ${toDir})`;
+      }
+      return `${r.from} → ${r.to}`;
+    });
+    if (status.renamed.length <= 3) {
+      sections.push(`移动 ${status.renamed.length} 个图标: ${renamedDescriptions.join(', ')}`);
+    } else {
+      const shown = renamedDescriptions.slice(0, 2);
+      sections.push(`移动 ${status.renamed.length} 个图标: ${shown.join(', ')} 等`);
+    }
   }
 
   if (sections.length === 0) {

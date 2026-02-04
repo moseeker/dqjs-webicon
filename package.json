@@ -23,7 +23,7 @@
     "dist/"
   ],
   "scripts": {
-    "build": "npm run lint && npm run generate && tsc && npm run bundle",
+    "build": "rm -rf dist && npm run lint && npm run generate && tsc && npm run bundle",
     "build:dev": "npm run build",
     "dev": "node scripts/dev-server.js",
     "generate": "node scripts/generate-icons.js",

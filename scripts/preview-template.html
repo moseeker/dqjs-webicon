@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>@dqjs/webicon - Icon Preview</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 12px;
+      background: #e8e8e8;
+      color: #222;
+      font-size: 13px;
+    }
+    h1 {
+      font-size: 18px;
+      margin-bottom: 4px;
+    }
+    .subtitle {
+      color: #555;
+      font-size: 12px;
+      margin-bottom: 12px;
+    }
+
+    .header {
+      margin-bottom: 12px;
+    }
+
+    .controls {
+      background: white;
+      border: 1px solid #222;
+      padding: 12px;
+      margin-bottom: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .search-box {
+      flex: 1;
+      min-width: 200px;
+    }
+
+    .search-box input {
+      width: 100%;
+      padding: 8px 12px;
+      font-size: 13px;
+      border: 1px solid #888;
+      outline: none;
+    }
+
+    .search-box input:focus {
+      border-color: #0066cc;
+    }
+
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .control-group label {
+      font-size: 12px;
+      color: #555;
+      white-space: nowrap;
+      font-weight: 600;
+    }
+
+    .control-group input[type="color"] {
+      width: 32px;
+      height: 32px;
+      border: 1px solid #888;
+      cursor: pointer;
+      padding: 2px;
+    }
+
+    .control-group input[type="range"] {
+      width: 100px;
+      cursor: pointer;
+    }
+
+    .control-group .size-value {
+      min-width: 35px;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .type-filter {
+      display: flex;
+      gap: 6px;
+    }
+
+    .type-filter button {
+      padding: 6px 12px;
+      font-size: 12px;
+      border: 1px solid #888;
+      background: white;
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    .type-filter button:hover {
+      background: #f0f0f0;
+      border-color: #555;
+    }
+
+    .type-filter button.active {
+      background: #e3f2fd;
+      border-color: #1976d2;
+      color: #0d47a1;
+    }
+
+    .stats {
+      font-size: 12px;
+      color: #555;
+      padding: 4px 10px;
+      background: #f0f0f0;
+      border: 1px solid #888;
+      font-weight: 500;
+    }
+
+    /* Main layout with sidebar */
+    .main-layout {
+      display: grid;
+      grid-template-columns: 1fr 280px;
+      gap: 12px;
+    }
+
+    @media (max-width: 900px) {
+      .main-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .icon-grid {
+      background: white;
+      border: 1px solid #222;
+      padding: 12px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      gap: 8px;
+    }
+
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .sidebar-section {
+      background: white;
+      border: 1px solid #222;
+      padding: 12px;
+    }
+
+    .sidebar-title {
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 10px;
+      color: #222;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid #222;
+      padding-bottom: 6px;
+    }
+
+    /* Recent searches */
+    .recent-searches {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .recent-search-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 8px;
+      background: #f5f5f5;
+      border: 1px solid #ccc;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.15s;
+    }
+
+    .recent-search-item:hover {
+      background: #e3f2fd;
+      border-color: #1976d2;
+    }
+
+    .recent-search-query {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .recent-search-count {
+      font-size: 10px;
+      color: #666;
+      background: #e0e0e0;
+      padding: 2px 6px;
+      border-radius: 2px;
+    }
+
+    .recent-searches-empty {
+      color: #888;
+      font-size: 11px;
+      text-align: center;
+      padding: 12px;
+      font-style: italic;
+    }
+
+    /* Demo area */
+    .demo-area {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .demo-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px;
+      background: #f9f9f9;
+      border: 1px solid #ddd;
+    }
+
+    .demo-item > *:first-child,
+    .demo-item > *:last-child {
+      flex-shrink: 0;
+    }
+
+    .demo-text {
+      font-size: 13px;
+      color: #333;
+    }
+
+    .icon-card.nocolors {
+      border-color: #1976d2;
+    }
+
+    .icon-card.nocolors:hover {
+      border-color: #0d47a1;
+      background: #e3f2fd;
+    }
+
+    .icon-card.colors {
+      border-color: #f57c00;
+    }
+
+    .icon-card.colors:hover {
+      border-color: #e65100;
+      background: #fff3e0;
+    }
+
+    .icon-card.copied {
+      background: #e8f5e9;
+      border-color: #2e7d32;
+    }
+
+    .icon-display {
+      font-size: 28px;
+      margin-bottom: 6px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .icon-name {
+      font-family: monospace;
+      font-size: 12px;
+      color: #333;
+      word-break: break-all;
+      line-height: 1.3;
+    }
+
+    .icon-card {
+      background: #fafafa;
+      border: 1px solid;
+      padding: 4px 2px;
+      text-align: center;
+      transition: all 0.15s;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: center;
+      height: 60px;
+      position: relative;
+      cursor: pointer;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: #222;
+      color: white;
+      padding: 10px 20px;
+      font-size: 13px;
+      opacity: 0;
+      transition: all 0.3s;
+      z-index: 1000;
+      border: 1px solid #222;
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    .empty-state {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 40px 20px;
+      color: #666;
+      font-size: 12px;
+      border: 1px dashed #ccc;
+    }
+
+    .empty-state svg {
+      width: 48px;
+      height: 48px;
+      margin-bottom: 12px;
+      opacity: 0.5;
+    }
+
+    @media (max-width: 768px) {
+      .controls {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .search-box {
+        width: 100%;
+      }
+
+      .control-group {
+        justify-content: space-between;
+      }
+
+      .icon-grid {
+        grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+        gap: 6px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>@dqjs/webicon</h1>
+    <p class="subtitle">Icon Preview - Click to copy tag name</p>
+  </div>
+
+  <div class="controls">
+    <div class="search-box">
+      <input type="text" id="search" placeholder="🔍 Search icons... (fuzzy match supported)">
+    </div>
+
+    <div class="control-group">
+      <label>Color:</label>
+      <input type="color" id="color" value="#333333">
+    </div>
+
+    <div class="control-group">
+      <label>Size:</label>
+      <input type="range" id="size" min="12" max="96" value="20">
+      <span class="size-value" id="sizeValue">20px</span>
+    </div>
+
+    <div class="type-filter">
+      <button class="active" data-type="all">All</button>
+      <button data-type="nocolors">Colorable</button>
+      <button data-type="colors">Original</button>
+    </div>
+
+    <div class="stats" id="stats">0 icons</div>
+  </div>
+
+  <div class="main-layout">
+    <div class="icon-grid" id="iconGrid"></div>
+
+    <div class="sidebar">
+      <!-- Recent Searches -->
+      <div class="sidebar-section">
+        <div class="sidebar-title">Recent Searches</div>
+        <div class="recent-searches" id="recentSearches">
+          <div class="recent-searches-empty">No recent searches</div>
+        </div>
+      </div>
+
+      <!-- Demo Area -->
+      <div class="sidebar-section">
+        <div class="sidebar-title">Icon + Text Demo</div>
+        <div class="demo-area" id="demoArea">
+          <div class="demo-item" style="justify-content: center; color: #888; font-style: italic;">
+            Click an icon to see demo
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">Copied!</div>
+
+  <!-- Load the icon bundle -->
+  <script src="webicon.min.js"></script>
+
+  <script>
+    // Icon data injected by generate-preview.js
+    const icons = __ICONS_DATA__;
+
+    // State
+    let currentFilter = 'all';
+    let currentSearch = '';
+    let currentColor = '#333333';
+    let currentSize = 20;
+    let lastSearchHadResults = false;
+    let selectedDemoIcon = null; // Track clicked icon for demo
+
+    // DOM elements
+    const searchInput = document.getElementById('search');
+    const colorInput = document.getElementById('color');
+    const sizeInput = document.getElementById('size');
+    const sizeValue = document.getElementById('sizeValue');
+    const iconGrid = document.getElementById('iconGrid');
+    const stats = document.getElementById('stats');
+    const toast = document.getElementById('toast');
+    const typeButtons = document.querySelectorAll('.type-filter button');
+    const recentSearchesContainer = document.getElementById('recentSearches');
+    const demoArea = document.getElementById('demoArea');
+
+    // Recent searches storage (in-memory only for this session)
+    let recentSearches = [];
+
+    /**
+     * Add search query to recent searches if it has results
+     * @param {string} query
+     * @param {number} resultCount
+     */
+    function addRecentSearch(query, resultCount) {
+      if (!query || resultCount === 0) return;
+
+      // Remove if already exists
+      recentSearches = recentSearches.filter(s => s.query !== query);
+
+      // Add to front
+      recentSearches.unshift({ query, count: resultCount, timestamp: Date.now() });
+
+      // Keep only last 10
+      if (recentSearches.length > 10) {
+        recentSearches = recentSearches.slice(0, 10);
+      }
+
+      renderRecentSearches();
+    }
+
+    /**
+     * Render recent searches
+     */
+    function renderRecentSearches() {
+      if (recentSearches.length === 0) {
+        recentSearchesContainer.innerHTML = '<div class="recent-searches-empty">No recent searches</div>';
+        return;
+      }
+
+      recentSearchesContainer.innerHTML = recentSearches.map(search => `
+        <div class="recent-search-item" data-query="${search.query}">
+          <span class="recent-search-query">${escapeHtml(search.query)}</span>
+          <span class="recent-search-count">${search.count}</span>
+        </div>
+      `).join('');
+
+      // Add click handlers
+      document.querySelectorAll('.recent-search-item').forEach(item => {
+        item.addEventListener('click', () => {
+          const query = item.dataset.query;
+          searchInput.value = query;
+          currentSearch = query;
+          renderIcons();
+        });
+      });
+    }
+
+    /**
+     * Escape HTML to prevent XSS
+     */
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    /**
+     * Render demo area with selected icon
+     */
+    function renderDemoArea() {
+      if (!selectedDemoIcon) {
+        demoArea.innerHTML = `
+          <div class="demo-item" style="justify-content: center; color: #888; font-style: italic;">
+            Click an icon to see demo
+          </div>
+        `;
+        return;
+      }
+
+      const colorAttr = selectedDemoIcon.type === 'nocolors' ? `color="${currentColor}"` : '';
+      const tagName = selectedDemoIcon.tagName;
+      const safeName = selectedDemoIcon.safeName;
+
+      demoArea.innerHTML = `
+        <div class="demo-item">
+          <${tagName} size="14" ${colorAttr}></${tagName}>
+          <span class="demo-text" style="font-size: 14px;">${escapeHtml(safeName)} (14px)</span>
+        </div>
+        <div class="demo-item">
+          <${tagName} size="16" ${colorAttr}></${tagName}>
+          <span class="demo-text" style="font-size: 16px;">${escapeHtml(safeName)} (16px)</span>
+        </div>
+        <div class="demo-item">
+          <${tagName} size="28" ${colorAttr}></${tagName}>
+          <span class="demo-text" style="font-size: 28px;">${escapeHtml(safeName)} (28px)</span>
+        </div>
+      `;
+    }
+
+    /**
+     * Simple fuzzy match
+     * @param {string} pattern - Search pattern
+     * @param {string} str - String to match
+     * @returns {boolean}
+     */
+    function fuzzyMatch(pattern, str) {
+      pattern = pattern.toLowerCase();
+      str = str.toLowerCase();
+
+      // Direct substring match
+      if (str.includes(pattern)) return true;
+
+      // Fuzzy match: all chars in pattern appear in order
+      let patternIdx = 0;
+      for (let i = 0; i < str.length && patternIdx < pattern.length; i++) {
+        if (str[i] === pattern[patternIdx]) {
+          patternIdx++;
+        }
+      }
+      return patternIdx === pattern.length;
+    }
+
+    /**
+     * Filter icons based on current state
+     * @returns {Array}
+     */
+    function filterIcons() {
+      return icons.filter(icon => {
+        // Type filter
+        if (currentFilter !== 'all' && icon.type !== currentFilter) {
+          return false;
+        }
+
+        // Search filter
+        if (currentSearch) {
+          const searchStr = icon.safeName + ' ' + icon.tagName;
+          if (!fuzzyMatch(currentSearch, searchStr)) {
+            return false;
+          }
+        }
+
+        return true;
+      });
+    }
+
+    /**
+     * Render icon grid
+     */
+    function renderIcons() {
+      const filtered = filterIcons();
+      lastSearchHadResults = filtered.length > 0;
+
+      if (filtered.length === 0) {
+        iconGrid.innerHTML = `
+          <div class="empty-state">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+            </svg>
+            <p>No icons found matching your search</p>
+          </div>
+        `;
+        stats.textContent = '0 icons';
+        return;
+      }
+
+      iconGrid.innerHTML = filtered.map(icon => {
+        const colorAttr = icon.type === 'nocolors' ? `color="${currentColor}"` : '';
+        return `
+          <div class="icon-card ${icon.type}" data-tag="${icon.tagName}">
+            <div class="icon-display">
+              <${icon.tagName} size="${currentSize}" ${colorAttr}></${icon.tagName}>
+            </div>
+            <div class="icon-name">${icon.safeName}</div>
+          </div>
+        `;
+      }).join('');
+
+      stats.textContent = `${filtered.length} icon${filtered.length !== 1 ? 's' : ''}`;
+
+      // Add click handlers
+      document.querySelectorAll('.icon-card').forEach(card => {
+        card.addEventListener('click', () => {
+          const tagName = card.dataset.tag;
+          copyToClipboard(`<${tagName}></${tagName}>`);
+          card.classList.add('copied');
+          setTimeout(() => card.classList.remove('copied'), 500);
+          
+          // Update demo area with clicked icon
+          const icon = icons.find(i => i.tagName === tagName);
+          if (icon) {
+            selectedDemoIcon = icon;
+            renderDemoArea();
+          }
+        });
+      });
+    }
+
+    /**
+     * Update icon colors (for nocolors type only)
+     */
+    function updateColors() {
+      document.querySelectorAll('.icon-card').forEach(card => {
+        const tagName = card.dataset.tag;
+        const icon = icons.find(i => i.tagName === tagName);
+        if (icon && icon.type === 'nocolors') {
+          const iconEl = card.querySelector(tagName);
+          if (iconEl) {
+            iconEl.setAttribute('color', currentColor);
+          }
+        }
+      });
+
+      // Re-render demo area with new color
+      renderDemoArea();
+    }
+
+    /**
+     * Update icon sizes
+     */
+    function updateSizes() {
+      document.querySelectorAll('.icon-card').forEach(card => {
+        const tagName = card.dataset.tag;
+        const iconEl = card.querySelector(tagName);
+        if (iconEl) {
+          iconEl.setAttribute('size', currentSize);
+        }
+      });
+
+      // Re-render demo area with new size
+      renderDemoArea();
+    }
+
+    /**
+     * Copy text to clipboard
+     * @param {string} text
+     */
+    function copyToClipboard(text) {
+      navigator.clipboard.writeText(text).then(() => {
+        showToast(`Copied: ${text}`);
+      }).catch(() => {
+        // Fallback
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        showToast(`Copied: ${text}`);
+      });
+    }
+
+    /**
+     * Show toast notification
+     * @param {string} message
+     */
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2000);
+    }
+
+    // Event listeners
+    searchInput.addEventListener('input', (e) => {
+      currentSearch = e.target.value.trim();
+      renderIcons();
+    });
+
+    // Save search on blur if it had results
+    searchInput.addEventListener('blur', () => {
+      if (currentSearch && lastSearchHadResults) {
+        const filtered = filterIcons();
+        addRecentSearch(currentSearch, filtered.length);
+      }
+    });
+
+    colorInput.addEventListener('input', (e) => {
+      currentColor = e.target.value;
+      updateColors();
+    });
+
+    sizeInput.addEventListener('input', (e) => {
+      currentSize = parseInt(e.target.value);
+      sizeValue.textContent = currentSize + 'px';
+      updateSizes();
+    });
+
+    typeButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        typeButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentFilter = btn.dataset.type;
+        renderIcons();
+      });
+    });
+
+    // Initial render
+    renderIcons();
+    renderDemoArea();
+  </script>
+</body>
+</html>
