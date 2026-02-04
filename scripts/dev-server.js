@@ -494,7 +494,7 @@ async function commitAndPush(customMessage = null) {
     }
 
     // Fetch latest from remote
-    await git.fetch();
+    await git.fetch('origin');
 
     // Check if we're behind remote
     const syncStatus = await getSyncStatus();
@@ -503,7 +503,7 @@ async function commitAndPush(customMessage = null) {
       console.log(`📥 Behind remote by ${syncStatus.behind} commit(s), rebasing...`);
       try {
         // Pull with rebase to put our commits on top
-        await git.pull(['--rebase']);
+        await git.pull('origin', undefined, ['--rebase']);
         console.log('✅ Rebase successful');
       } catch (rebaseErr) {
         // Rebase conflict - abort and return error
@@ -522,7 +522,7 @@ async function commitAndPush(customMessage = null) {
     }
 
     // Push
-    await git.push();
+    await git.push('origin');
 
     return {
       success: true,
@@ -542,7 +542,7 @@ async function commitAndPush(customMessage = null) {
 async function runGitFetch() {
   try {
     console.log('🔄 Running git fetch...');
-    await git.fetch();
+    await git.fetch('origin');
     console.log('✅ Git fetch complete');
     return { success: true };
   } catch (err) {
