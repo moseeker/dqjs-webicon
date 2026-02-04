@@ -57,6 +57,19 @@ jobs:
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Generate sandbox version
+        run: |
+          # Get base version from package.json
+          BASE_VERSION=$(node -p "require('./package.json').version")
+          # Generate timestamp: YYYYMMDDHHMMSS
+          TIMESTAMP=$(date -u +"%Y%m%d%H%M%S")
+          # Create sandbox version
+          SANDBOX_VERSION="${BASE_VERSION}-sandbox-${TIMESTAMP}"
+          echo "SANDBOX_VERSION=${SANDBOX_VERSION}" >> $GITHUB_ENV
+          # Update package.json version (no git commit)
+          pnpm version "${SANDBOX_VERSION}" --no-git-tag-version
+          echo "📦 Sandbox version: ${SANDBOX_VERSION}"
+
       - name: Configure NPM authentication
         run: pnpm config set "${{ secrets.NPM_AUTH_URL }}"
 
