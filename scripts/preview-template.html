@@ -163,8 +163,9 @@
       border: 1px solid #222;
       padding: 12px;
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      grid-template-columns: repeat(auto-fill, 72px);
       gap: 8px;
+      align-self: start;
     }
 
     .sidebar {
@@ -282,41 +283,30 @@
       background: #fff3e0;
     }
 
-    .icon-card.copied {
-      background: #e8f5e9;
-      border-color: #2e7d32;
+    .icon-card {
+      background: #fafafa;
+      border: 1px solid #888;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 72px;
+      position: relative;
+      cursor: pointer;
+      overflow: hidden;
+      flex-shrink: 0;
     }
 
-    .icon-display {
-      font-size: 28px;
-      margin-bottom: 6px;
-      height: 32px;
+    .icon-card.copied {
+      background: #e8f5e9 !important;
+      border-color: #2e7d32 !important;
+    }
+
+    .icon-card .icon-display {
       display: flex;
       align-items: center;
       justify-content: center;
-    }
-
-    .icon-name {
-      font-family: monospace;
-      font-size: 12px;
-      color: #333;
-      word-break: break-all;
-      line-height: 1.3;
-    }
-
-    .icon-card {
-      background: #fafafa;
-      border: 1px solid;
-      padding: 4px 2px;
-      text-align: center;
-      transition: all 0.15s;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-start;
-      align-items: center;
-      height: 60px;
-      position: relative;
-      cursor: pointer;
     }
 
     .toast {
@@ -370,8 +360,9 @@
       }
 
       .icon-grid {
-        grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+        grid-template-columns: repeat(auto-fill, 72px);
         gap: 6px;
+        align-self: start;
       }
     }
   </style>
@@ -467,8 +458,38 @@
     const demoArea = document.getElementById('demoArea');
     const autoCropToggle = document.getElementById('autoCropToggle');
 
-    // Recent searches storage (in-memory only for this session)
+    // Recent searches storage with localStorage persistence
+    const STORAGE_KEY = 'webicon_recent_searches';
     let recentSearches = [];
+
+    /**
+     * Load recent searches from localStorage
+     */
+    function loadRecentSearches() {
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          // Filter out entries older than 7 days
+          const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+          recentSearches = parsed.filter(s => s.timestamp > oneWeekAgo);
+        }
+      } catch (e) {
+        console.warn('Failed to load recent searches:', e);
+        recentSearches = [];
+      }
+    }
+
+    /**
+     * Save recent searches to localStorage
+     */
+    function saveRecentSearches() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(recentSearches));
+      } catch (e) {
+        console.warn('Failed to save recent searches:', e);
+      }
+    }
 
     /**
      * Add search query to recent searches if it has results
@@ -489,6 +510,7 @@
         recentSearches = recentSearches.slice(0, 10);
       }
 
+      saveRecentSearches();
       renderRecentSearches();
     }
 
@@ -632,11 +654,10 @@
         const colorAttr = icon.type === 'nocolors' ? `color="${currentColor}"` : '';
         const autoCropAttr = autoCropEnabled ? 'auto-crop' : '';
         return `
-          <div class="icon-card ${icon.type}" data-tag="${icon.tagName}">
+          <div class="icon-card ${icon.type}" data-tag="${icon.tagName}" title="${icon.safeName}">
             <div class="icon-display">
               <${icon.tagName} size="${currentSize}" ${colorAttr} ${autoCropAttr}></${icon.tagName}>
             </div>
-            <div class="icon-name">${icon.safeName}</div>
           </div>
         `;
       }).join('');
@@ -769,6 +790,8 @@
     });
 
     // Initial render
+    loadRecentSearches();
+    renderRecentSearches();
     renderIcons();
     renderDemoArea();
   </script>
