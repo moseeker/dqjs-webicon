@@ -17,7 +17,7 @@
  *     node scripts/generate-icons.js --incremental --delete nocolors/file.svg
  *
  * Naming convention:
- *   - SVG file: `arrow-left.svg` → Component: `QxIconArrowLeft` → Tag: `<qx-icon-arrow-left>`
+ *   - SVG file: `arrow-left.svg` → Component: `QxIconArrowLeft` → Tag: `<qxw-icon-arrow-left>`
  */
 
 import { readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync, rmSync } from 'node:fs';
@@ -100,11 +100,11 @@ function toComponentName(filename) {
 /**
  * Convert filename to tag name
  * @param {string} filename - SVG filename (e.g., "arrow-left.svg")
- * @returns {string} Tag name (e.g., "qx-icon-arrow-left")
+ * @returns {string} Tag name (e.g., "qxw-icon-arrow-left")
  */
 function toTagName(filename) {
   const safeName = toSafeFileName(filename);
-  return 'qx-icon-' + safeName.toLowerCase();
+  return 'qxw-icon-' + safeName.toLowerCase();
 }
 
 /**
@@ -389,7 +389,7 @@ function generateIndex(icons) {
  *   import { QxIconArrowLeft } from '@dqjs/webicon';
  *   // or
  *   import '@dqjs/webicon/icons/arrow-left.js';
- *   // then use <qx-icon-arrow-left></qx-icon-arrow-left>
+ *   // then use <qxw-icon-arrow-left></qxw-icon-arrow-left>
  */
 
 ${exports}

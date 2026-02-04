@@ -5,7 +5,7 @@
  *   import { QxIconArrowLeft } from '@dqjs/webicon';
  *   // or
  *   import '@dqjs/webicon/icons/arrow-left.js';
- *   // then use <qx-icon-arrow-left></qx-icon-arrow-left>
+ *   // then use <qxw-icon-arrow-left></qxw-icon-arrow-left>
  */
 
 export { QxIconArrowLeft } from './icons/arrow-left.js';
