@@ -126,6 +126,31 @@ function optimizeSvg(svgContent, config) {
 }
 
 /**
+ * Extract viewBox dimensions from SVG
+ * @param {string} svg - SVG content
+ * @returns {{width: number, height: number} | null}
+ */
+function getSvgDimensions(svg) {
+  const viewBoxMatch = svg.match(/viewBox=["']\s*([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s*["']/i);
+  if (viewBoxMatch) {
+    return {
+      width: parseFloat(viewBoxMatch[3]),
+      height: parseFloat(viewBoxMatch[4])
+    };
+  }
+  // Fallback to width/height attributes
+  const widthMatch = svg.match(/width=["']([\d.]+)/i);
+  const heightMatch = svg.match(/height=["']([\d.]+)/i);
+  if (widthMatch && heightMatch) {
+    return {
+      width: parseFloat(widthMatch[1]),
+      height: parseFloat(heightMatch[1])
+    };
+  }
+  return null;
+}
+
+/**
  * Generate Lit component code for a nocolors icon (CSS colorable)
  * @param {string} componentName - Component class name
  * @param {string} tagName - Custom element tag name
@@ -133,7 +158,7 @@ function optimizeSvg(svgContent, config) {
  * @returns {string} TypeScript component code
  */
 function generateNocolorsComponent(componentName, tagName, svgContent) {
-  return `import { LitElement, html, css } from 'lit';
+  return `import { LitElement, html, css, type PropertyValues } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 
 /**
@@ -147,7 +172,8 @@ export class ${componentName} extends LitElement {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: var(--icon-size, 1em);
+      flex: 0 0 auto;
+      width: var(--icon-width, var(--icon-size, 1em));
       height: var(--icon-size, 1em);
       color: var(--icon-color, currentColor);
     }
@@ -155,14 +181,59 @@ export class ${componentName} extends LitElement {
       width: 100%;
       height: 100%;
       fill: currentColor;
+      display: block;
     }
   \`;
+
+  private originalViewBox?: string;
+  private aspectRatio?: number;
 
   @property({ type: Number })
   size?: number;
 
   @property({ type: String })
   color?: string;
+
+  @property({ type: Boolean, attribute: 'auto-crop' })
+  autoCrop = true;
+
+  private updateCrop() {
+    const svg = this.renderRoot.querySelector('svg');
+    if (!svg) return;
+
+    if (!this.originalViewBox) {
+      this.originalViewBox = svg.getAttribute('viewBox') ?? undefined;
+    }
+
+    if (!this.autoCrop) {
+      if (this.originalViewBox) {
+        svg.setAttribute('viewBox', this.originalViewBox);
+      }
+      this.style.removeProperty('--icon-width');
+      return;
+    }
+
+    const box = svg.getBBox();
+    if (!box.width || !box.height) return;
+
+    this.aspectRatio = box.width / box.height;
+    svg.setAttribute('viewBox', box.x + ' ' + box.y + ' ' + box.width + ' ' + box.height);
+
+    const size = this.size ?? parseFloat(getComputedStyle(this).fontSize);
+    if (size && this.aspectRatio) {
+      this.style.setProperty('--icon-width', (size * this.aspectRatio).toFixed(2) + 'px');
+    }
+  }
+
+  firstUpdated() {
+    this.updateCrop();
+  }
+
+  updated(changedProperties: PropertyValues) {
+    if (changedProperties.has('size') || changedProperties.has('autoCrop')) {
+      this.updateCrop();
+    }
+  }
 
   render() {
     const style = [
@@ -190,10 +261,12 @@ declare global {
  * @param {string} componentName - Component class name
  * @param {string} tagName - Custom element tag name
  * @param {string} svgContent - Cleaned SVG content
+ * @param {{width: number, height: number} | null} dimensions - SVG dimensions
  * @returns {string} TypeScript component code
  */
-function generateColorsComponent(componentName, tagName, svgContent) {
-  return `import { LitElement, html, css } from 'lit';
+function generateColorsComponent(componentName, tagName, svgContent, dimensions) {
+  const aspectRatio = dimensions ? dimensions.width / dimensions.height : 1;
+  return `import { LitElement, html, css, type PropertyValues } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 
 /**
@@ -207,20 +280,68 @@ export class ${componentName} extends LitElement {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: var(--icon-size, 1em);
+      flex: 0 0 auto;
+      width: var(--icon-width, auto);
       height: var(--icon-size, 1em);
     }
     svg {
       width: 100%;
       height: 100%;
+      display: block;
     }
   \`;
+
+  private originalViewBox?: string;
+  private aspectRatio?: number;
 
   @property({ type: Number })
   size?: number;
 
+  @property({ type: Boolean, attribute: 'auto-crop' })
+  autoCrop = true;
+
+  private updateCrop() {
+    const svg = this.renderRoot.querySelector('svg');
+    if (!svg) return;
+
+    if (!this.originalViewBox) {
+      this.originalViewBox = svg.getAttribute('viewBox') ?? undefined;
+    }
+
+    if (!this.autoCrop) {
+      if (this.originalViewBox) {
+        svg.setAttribute('viewBox', this.originalViewBox);
+      }
+      this.style.removeProperty('--icon-width');
+      return;
+    }
+
+    const box = svg.getBBox();
+    if (!box.width || !box.height) return;
+
+    this.aspectRatio = box.width / box.height;
+    svg.setAttribute('viewBox', box.x + ' ' + box.y + ' ' + box.width + ' ' + box.height);
+
+    const size = this.size ?? parseFloat(getComputedStyle(this).fontSize);
+    if (size && this.aspectRatio) {
+      this.style.setProperty('--icon-width', (size * this.aspectRatio).toFixed(2) + 'px');
+    }
+  }
+
+  firstUpdated() {
+    this.updateCrop();
+  }
+
+  updated(changedProperties: PropertyValues) {
+    if (changedProperties.has('size') || changedProperties.has('autoCrop')) {
+      this.updateCrop();
+    }
+  }
+
   render() {
-    const style = this.size ? \`--icon-size: \${this.size}px\` : '';
+    const style = this.size
+      ? '--icon-size: ' + this.size + 'px; --icon-width: ' + (this.size * ${aspectRatio}).toFixed(2) + 'px'
+      : '';
 
     return html\`
       <style>\${style ? \`:host { \${style} }\` : ''}</style>
@@ -236,7 +357,6 @@ declare global {
 }
 `;
 }
-
 /**
  * Generate index.ts that exports all icons
  * @param {Array<{componentName: string, filename: string}>} icons - List of icons
@@ -302,16 +422,26 @@ async function processDirectory(dir, type, icons) {
     const svgPath = join(dir, file);
     let svgContent = readFileSync(svgPath, 'utf-8');
 
+    // Get dimensions before optimization
+    const dimensions = getSvgDimensions(svgContent);
+
     // Optimize with SVGO
     svgContent = optimizeSvg(svgContent, svgoConfig);
     svgContent = cleanSvg(svgContent);
+
+    if (type === 'colors') {
+      // Keep viewBox, remove explicit width/height to allow CSS sizing
+      svgContent = svgContent.replace(/\s(width|height)=["'][^"']*["']/gi, '');
+    }
 
     const componentName = toComponentName(file);
     const tagName = toTagName(file);
     const safeFileName = toSafeFileName(file);
     const outputFile = join(OUTPUT_DIR, safeFileName + '.ts');
 
-    const componentCode = generateFn(componentName, tagName, svgContent);
+    const componentCode = type === 'nocolors'
+      ? generateFn(componentName, tagName, svgContent)
+      : generateFn(componentName, tagName, svgContent, dimensions);
     writeFileSync(outputFile, componentCode);
 
     icons.push({ componentName, filename: file, safeFileName, type });

@@ -115,6 +115,27 @@
       color: #0d47a1;
     }
 
+    .toggle-btn {
+      padding: 6px 14px;
+      font-size: 12px;
+      border: 1px solid #888;
+      background: #f5f5f5;
+      cursor: pointer;
+      font-weight: 600;
+      min-width: 50px;
+      transition: all 0.15s;
+    }
+
+    .toggle-btn:hover {
+      border-color: #555;
+    }
+
+    .toggle-btn[data-active="true"] {
+      background: #2e7d32;
+      border-color: #1b5e20;
+      color: white;
+    }
+
     .stats {
       font-size: 12px;
       color: #555;
@@ -235,6 +256,7 @@
     .demo-item > *:first-child,
     .demo-item > *:last-child {
       flex-shrink: 0;
+      flex-grow: 0;
     }
 
     .demo-text {
@@ -382,6 +404,11 @@
       <button data-type="colors">Original</button>
     </div>
 
+    <div class="control-group">
+      <label>Auto Crop:</label>
+      <button id="autoCropToggle" class="toggle-btn" data-active="false">OFF</button>
+    </div>
+
     <div class="stats" id="stats">0 icons</div>
   </div>
 
@@ -425,6 +452,7 @@
     let currentSize = 20;
     let lastSearchHadResults = false;
     let selectedDemoIcon = null; // Track clicked icon for demo
+    let autoCropEnabled = false; // Auto crop toggle state
 
     // DOM elements
     const searchInput = document.getElementById('search');
@@ -437,6 +465,7 @@
     const typeButtons = document.querySelectorAll('.type-filter button');
     const recentSearchesContainer = document.getElementById('recentSearches');
     const demoArea = document.getElementById('demoArea');
+    const autoCropToggle = document.getElementById('autoCropToggle');
 
     // Recent searches storage (in-memory only for this session)
     let recentSearches = [];
@@ -513,20 +542,21 @@
       }
 
       const colorAttr = selectedDemoIcon.type === 'nocolors' ? `color="${currentColor}"` : '';
+      const autoCropAttr = autoCropEnabled ? 'auto-crop' : '';
       const tagName = selectedDemoIcon.tagName;
       const safeName = selectedDemoIcon.safeName;
 
       demoArea.innerHTML = `
         <div class="demo-item">
-          <${tagName} size="14" ${colorAttr}></${tagName}>
+          <${tagName} size="14" ${colorAttr} ${autoCropAttr}></${tagName}>
           <span class="demo-text" style="font-size: 14px;">${escapeHtml(safeName)} (14px)</span>
         </div>
         <div class="demo-item">
-          <${tagName} size="16" ${colorAttr}></${tagName}>
+          <${tagName} size="16" ${colorAttr} ${autoCropAttr}></${tagName}>
           <span class="demo-text" style="font-size: 16px;">${escapeHtml(safeName)} (16px)</span>
         </div>
         <div class="demo-item">
-          <${tagName} size="28" ${colorAttr}></${tagName}>
+          <${tagName} size="28" ${colorAttr} ${autoCropAttr}></${tagName}>
           <span class="demo-text" style="font-size: 28px;">${escapeHtml(safeName)} (28px)</span>
         </div>
       `;
@@ -600,10 +630,11 @@
 
       iconGrid.innerHTML = filtered.map(icon => {
         const colorAttr = icon.type === 'nocolors' ? `color="${currentColor}"` : '';
+        const autoCropAttr = autoCropEnabled ? 'auto-crop' : '';
         return `
           <div class="icon-card ${icon.type}" data-tag="${icon.tagName}">
             <div class="icon-display">
-              <${icon.tagName} size="${currentSize}" ${colorAttr}></${icon.tagName}>
+              <${icon.tagName} size="${currentSize}" ${colorAttr} ${autoCropAttr}></${icon.tagName}>
             </div>
             <div class="icon-name">${icon.safeName}</div>
           </div>
@@ -726,6 +757,15 @@
         currentFilter = btn.dataset.type;
         renderIcons();
       });
+    });
+
+    // Auto crop toggle
+    autoCropToggle.addEventListener('click', () => {
+      autoCropEnabled = !autoCropEnabled;
+      autoCropToggle.dataset.active = autoCropEnabled.toString();
+      autoCropToggle.textContent = autoCropEnabled ? 'ON' : 'OFF';
+      renderIcons();
+      renderDemoArea();
     });
 
     // Initial render
