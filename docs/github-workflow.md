@@ -7,6 +7,8 @@
 | Name | 说明 |
 |------|------|
 | `WEBHOOK_NOTIFY_API_KEY` | 企业微信 webhook key，用于构建通知 |
+| `NPM_AUTH_URL` | NPM 认证配置，格式如 `//registry.example.com/:_authToken=TOKEN` |
+| `NPM_REGISTRY_URL` | 私有 NPM registry 地址，如 `https://registry.example.com/` |
 
 ## Pages
 
