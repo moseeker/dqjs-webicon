@@ -9,9 +9,12 @@
  *   - svg/colors/   - Icons that keep their original colors
  *
  * Usage:
- *   1. Place SVG files in the appropriate directory
- *   2. Run `npm run build`
- *   3. Generated components will be in `src/icons/`
+ *   Full build (default):
+ *     npm run generate
+ *
+ *   Incremental build (for dev server):
+ *     node scripts/generate-icons.js --incremental --add nocolors/file1.svg,colors/file2.svg
+ *     node scripts/generate-icons.js --incremental --delete nocolors/file.svg
  *
  * Naming convention:
  *   - SVG file: `arrow-left.svg` → Component: `QxIconArrowLeft` → Tag: `<qx-icon-arrow-left>`
@@ -29,6 +32,10 @@ const ROOT_DIR = join(__dirname, '..');
 const NOCOLORS_DIR = join(ROOT_DIR, 'svg', 'nocolors');
 const COLORS_DIR = join(ROOT_DIR, 'svg', 'colors');
 const OUTPUT_DIR = join(ROOT_DIR, 'src', 'icons');
+const INDEX_PATH = join(ROOT_DIR, 'src', 'index.ts');
+
+// Cache for SVGO configs to avoid reloading
+const svgoConfigCache = new Map();
 
 /**
  * Sanitize filename to safe ASCII for module names
@@ -181,6 +188,7 @@ export class ${componentName} extends LitElement {
       width: 100%;
       height: 100%;
       fill: currentColor;
+      stroke: currentColor;
       display: block;
     }
   \`;
@@ -357,9 +365,10 @@ declare global {
 }
 `;
 }
+
 /**
  * Generate index.ts that exports all icons
- * @param {Array<{componentName: string, filename: string}>} icons - List of icons
+ * @param {Array<{componentName: string, safeFileName: string}>} icons - List of icons
  * @returns {string} Index file content
  */
 function generateIndex(icons) {
@@ -368,6 +377,7 @@ function generateIndex(icons) {
   }
 
   const exports = icons
+    .sort((a, b) => a.safeFileName.localeCompare(b.safeFileName))
     .map(({ componentName, safeFileName }) => {
       return `export { ${componentName} } from './icons/${safeFileName}.js';`;
     })
@@ -388,7 +398,150 @@ ${exports}
 }
 
 /**
- * Process SVG files from a directory
+ * Parse existing index.ts to get current exports
+ * @returns {Map<string, {componentName: string, safeFileName: string}>} Map of safeFileName -> icon info
+ */
+function parseExistingIndex() {
+  const icons = new Map();
+  
+  if (!existsSync(INDEX_PATH)) {
+    return icons;
+  }
+  
+  const content = readFileSync(INDEX_PATH, 'utf-8');
+  // Match: export { ComponentName } from './icons/safe-file-name.js';
+  const exportRegex = /export\s*\{\s*(\w+)\s*\}\s*from\s*['"]\.\/icons\/([^'"]+)\.js['"]/g;
+  
+  let match;
+  while ((match = exportRegex.exec(content)) !== null) {
+    const componentName = match[1];
+    const safeFileName = match[2];
+    icons.set(safeFileName, { componentName, safeFileName });
+  }
+  
+  return icons;
+}
+
+/**
+ * Load SVGO config for a directory (with caching)
+ * @param {string} dir - Directory path
+ * @returns {Promise<object>} SVGO config
+ */
+async function loadSvgoConfig(dir) {
+  if (svgoConfigCache.has(dir)) {
+    return svgoConfigCache.get(dir);
+  }
+  
+  const configPath = join(dir, 'svgo.config.cjs');
+  let config = {};
+  
+  if (existsSync(configPath)) {
+    const configModule = await import(`file://${configPath}`);
+    config = configModule.default || configModule;
+  }
+  
+  svgoConfigCache.set(dir, config);
+  return config;
+}
+
+/**
+ * Process a single SVG file
+ * @param {string} filePath - Full path to SVG file (e.g., "type/filename.svg")
+ * @param {'nocolors' | 'colors'} type - Icon type
+ * @returns {Promise<{componentName: string, safeFileName: string, type: string} | null>}
+ */
+async function processSingleFile(filePath, type) {
+  const dir = type === 'nocolors' ? NOCOLORS_DIR : COLORS_DIR;
+  const filename = basename(filePath);
+  const fullPath = join(dir, filename);
+  
+  if (!existsSync(fullPath)) {
+    console.log(`    ⚠️  File not found: ${type}/${filename}`);
+    return null;
+  }
+  
+  const svgoConfig = await loadSvgoConfig(dir);
+  
+  let svgContent = readFileSync(fullPath, 'utf-8');
+  const dimensions = getSvgDimensions(svgContent);
+  
+  // Optimize with SVGO
+  svgContent = optimizeSvg(svgContent, svgoConfig);
+  svgContent = cleanSvg(svgContent);
+  
+  if (type === 'colors') {
+    // Keep viewBox, remove explicit width/height to allow CSS sizing
+    svgContent = svgContent.replace(/\s(width|height)=["'][^"']*["']/gi, '');
+  }
+  
+  const componentName = toComponentName(filename);
+  const tagName = toTagName(filename);
+  const safeFileName = toSafeFileName(filename);
+  const outputFile = join(OUTPUT_DIR, safeFileName + '.ts');
+  
+  const generateFn = type === 'nocolors' ? generateNocolorsComponent : generateColorsComponent;
+  const componentCode = type === 'nocolors'
+    ? generateFn(componentName, tagName, svgContent)
+    : generateFn(componentName, tagName, svgContent, dimensions);
+  
+  writeFileSync(outputFile, componentCode);
+  
+  console.log(`    ✅ ${filename} → ${componentName} (${tagName}) [${type}]`);
+  
+  return { componentName, safeFileName, type };
+}
+
+/**
+ * Delete a generated icon file
+ * @param {string} filePath - File path (e.g., "type/filename.svg")
+ * @returns {{safeFileName: string} | null}
+ */
+function deleteSingleFile(filePath) {
+  const filename = basename(filePath);
+  const safeFileName = toSafeFileName(filename);
+  const outputFile = join(OUTPUT_DIR, safeFileName + '.ts');
+  
+  if (existsSync(outputFile)) {
+    rmSync(outputFile);
+    console.log(`    🗑️  Deleted: ${safeFileName}.ts`);
+    return { safeFileName };
+  } else {
+    console.log(`    ⚠️  File not found: ${safeFileName}.ts`);
+    return null;
+  }
+}
+
+/**
+ * Parse CLI arguments
+ * @returns {{incremental: boolean, add: string[], delete: string[]}}
+ */
+function parseArgs() {
+  const args = process.argv.slice(2);
+  const result = {
+    incremental: false,
+    add: [],
+    delete: [],
+  };
+  
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    
+    if (arg === '--incremental') {
+      result.incremental = true;
+    } else if (arg === '--add' && args[i + 1]) {
+      result.add = args[i + 1].split(',').filter(Boolean);
+      i++;
+    } else if (arg === '--delete' && args[i + 1]) {
+      result.delete = args[i + 1].split(',').filter(Boolean);
+      i++;
+    }
+  }
+  
+  return result;
+}
+
+/**
+ * Process SVG files from a directory (full build)
  * @param {string} dir - Directory path
  * @param {'nocolors' | 'colors'} type - Icon type
  * @param {Array} icons - Array to collect icon info
@@ -406,13 +559,7 @@ async function processDirectory(dir, type, icons) {
   }
 
   // Load SVGO config
-  const configPath = join(dir, 'svgo.config.cjs');
-  let svgoConfig = {};
-  if (existsSync(configPath)) {
-    // Dynamic import for CJS config
-    const configModule = await import(`file://${configPath}`);
-    svgoConfig = configModule.default || configModule;
-  }
+  const svgoConfig = await loadSvgoConfig(dir);
 
   console.log(`\n  Processing ${type}/ (${svgFiles.length} files)...`);
 
@@ -449,7 +596,63 @@ async function processDirectory(dir, type, icons) {
   }
 }
 
-async function main() {
+/**
+ * Incremental build mode
+ * @param {{add: string[], delete: string[]}} options
+ */
+async function incrementalBuild({ add, delete: del }) {
+  console.log('🔄 Incremental build...');
+  
+  // Ensure output directory exists
+  if (!existsSync(OUTPUT_DIR)) {
+    mkdirSync(OUTPUT_DIR, { recursive: true });
+  }
+  
+  // Parse existing index to get current exports
+  const existingIcons = parseExistingIndex();
+  
+  // Process deletions first
+  if (del.length > 0) {
+    console.log(`\n  Deleting ${del.length} file(s)...`);
+    for (const filePath of del) {
+      const result = deleteSingleFile(filePath);
+      if (result) {
+        existingIcons.delete(result.safeFileName);
+      }
+    }
+  }
+  
+  // Process additions/modifications
+  if (add.length > 0) {
+    console.log(`\n  Processing ${add.length} file(s)...`);
+    for (const filePath of add) {
+      // Parse type from path (e.g., "nocolors/file.svg" or "colors/file.svg")
+      const parts = filePath.split('/');
+      const type = parts[0] === 'colors' ? 'colors' : 'nocolors';
+      const filename = parts[parts.length - 1];
+      
+      const result = await processSingleFile(filename, type);
+      if (result) {
+        existingIcons.set(result.safeFileName, {
+          componentName: result.componentName,
+          safeFileName: result.safeFileName,
+        });
+      }
+    }
+  }
+  
+  // Regenerate index.ts
+  const icons = Array.from(existingIcons.values());
+  const indexContent = generateIndex(icons);
+  writeFileSync(INDEX_PATH, indexContent);
+  
+  console.log(`\n✅ Incremental build complete (${icons.length} total icons)`);
+}
+
+/**
+ * Full build mode (default)
+ */
+async function fullBuild() {
   console.log('🔍 Generating icon components...');
 
   // Clean and recreate output directory
@@ -480,7 +683,7 @@ async function main() {
 
   // Generate index.ts
   const indexContent = generateIndex(icons);
-  writeFileSync(join(ROOT_DIR, 'src', 'index.ts'), indexContent);
+  writeFileSync(INDEX_PATH, indexContent);
 
   if (icons.length === 0) {
     console.log('\n⚠️  No icons generated. Add SVG files to svg/nocolors/ or svg/colors/');
@@ -490,6 +693,16 @@ async function main() {
     const colorsCount = icons.filter((i) => i.type === 'colors').length;
     console.log(`   - nocolors (CSS colorable): ${nocolorsCount}`);
     console.log(`   - colors (preserved): ${colorsCount}`);
+  }
+}
+
+async function main() {
+  const args = parseArgs();
+  
+  if (args.incremental) {
+    await incrementalBuild({ add: args.add, delete: args.delete });
+  } else {
+    await fullBuild();
   }
 }
 

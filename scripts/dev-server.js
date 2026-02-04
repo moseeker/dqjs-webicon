@@ -143,11 +143,11 @@ function serveFile(res, filePath) {
 }
 
 /**
- * Run build command
+ * Run full build command (for production or manual trigger)
  */
 function runBuild() {
   return new Promise((resolve, reject) => {
-    console.log('🔨 Running build...');
+    console.log('🔨 Running full build...');
     broadcast({ type: 'build-start' });
 
     const buildProcess = spawn('npm', ['run', 'build'], {
@@ -177,6 +177,124 @@ function runBuild() {
         broadcast({ type: 'build-complete', success: false, error: output });
         reject(new Error(`Build failed with code ${code}`));
       }
+    });
+  });
+}
+
+/**
+ * Run incremental build for specific files
+ * @param {{add?: string[], delete?: string[]}} options - Files to add or delete (format: "type/filename.svg")
+ */
+function runIncrementalBuild({ add = [], delete: del = [] }) {
+  return new Promise((resolve, reject) => {
+    const args = ['scripts/generate-icons.js', '--incremental'];
+    
+    if (add.length > 0) {
+      args.push('--add', add.join(','));
+    }
+    if (del.length > 0) {
+      args.push('--delete', del.join(','));
+    }
+    
+    console.log(`🔄 Running incremental build (add: ${add.length}, delete: ${del.length})...`);
+    broadcast({ type: 'build-start' });
+
+    const buildProcess = spawn('node', args, {
+      cwd: ROOT_DIR,
+      stdio: 'pipe',
+      shell: true,
+    });
+
+    let output = '';
+    buildProcess.stdout.on('data', (data) => {
+      output += data.toString();
+      process.stdout.write(data);
+    });
+
+    buildProcess.stderr.on('data', (data) => {
+      output += data.toString();
+      process.stderr.write(data);
+    });
+
+    buildProcess.on('close', (code) => {
+      if (code === 0) {
+        console.log('✅ Incremental build complete');
+        // Run tsc and bundle after generate
+        runTscAndBundle()
+          .then(() => {
+            broadcast({ type: 'build-complete', success: true });
+            resolve(output);
+          })
+          .catch((err) => {
+            broadcast({ type: 'build-complete', success: false, error: err.message });
+            reject(err);
+          });
+      } else {
+        console.error('❌ Incremental build failed');
+        broadcast({ type: 'build-complete', success: false, error: output });
+        reject(new Error(`Incremental build failed with code ${code}`));
+      }
+    });
+  });
+}
+
+/**
+ * Run TypeScript compilation and bundling (after incremental generate)
+ * Uses --dev flag to only build IIFE bundle, skipping CJS files
+ */
+function runTscAndBundle() {
+  return new Promise((resolve, reject) => {
+    console.log('📦 Running tsc and bundle...');
+    
+    // Run tsc first, then bundle
+    const tscProcess = spawn('npx', ['tsc'], {
+      cwd: ROOT_DIR,
+      stdio: 'pipe',
+      shell: true,
+    });
+
+    let output = '';
+    tscProcess.stdout.on('data', (data) => {
+      output += data.toString();
+      process.stdout.write(data);
+    });
+
+    tscProcess.stderr.on('data', (data) => {
+      output += data.toString();
+      process.stderr.write(data);
+    });
+
+    tscProcess.on('close', (code) => {
+      if (code !== 0) {
+        reject(new Error(`tsc failed with code ${code}`));
+        return;
+      }
+      
+      // Run bundle with --dev flag (only IIFE, skip CJS)
+      const bundleProcess = spawn('node', ['scripts/bundle.js', '--dev'], {
+        cwd: ROOT_DIR,
+        stdio: 'pipe',
+        shell: true,
+      });
+
+      bundleProcess.stdout.on('data', (data) => {
+        output += data.toString();
+        process.stdout.write(data);
+      });
+
+      bundleProcess.stderr.on('data', (data) => {
+        output += data.toString();
+        process.stderr.write(data);
+      });
+
+      bundleProcess.on('close', (bundleCode) => {
+        if (bundleCode === 0) {
+          console.log('✅ tsc and bundle complete');
+          resolve(output);
+        } else {
+          reject(new Error(`bundle failed with code ${bundleCode}`));
+        }
+      });
     });
   });
 }
@@ -552,8 +670,9 @@ const server = createServer(async (req, res) => {
         console.log(`📁 Uploaded: ${targetDir}/${safeName}` + (safeName !== originalName ? ` (original: ${originalName})` : ''));
       }
 
-      // Run build
-      runBuild().catch(err => console.error('Build error:', err.message));
+      // Run incremental build for uploaded files
+      const addFiles = savedFiles.map(f => `${targetDir}/${f}`);
+      runIncrementalBuild({ add: addFiles }).catch(err => console.error('Build error:', err.message));
 
       sendJSON(res, 200, { 
         success: true, 
@@ -604,8 +723,8 @@ const server = createServer(async (req, res) => {
         unlinkSync(filePath);
         console.log(`🗑️ Deleted: ${type}/${filename}`);
         
-        // Trigger build
-        runBuild().catch(err => console.error('Build error:', err.message));
+        // Trigger incremental build for deleted file
+        runIncrementalBuild({ delete: [`${type}/${filename}`] }).catch(err => console.error('Build error:', err.message));
         
         sendJSON(res, 200, { success: true, message: 'File deleted' });
       } else {

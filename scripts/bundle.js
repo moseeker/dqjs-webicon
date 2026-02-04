@@ -4,6 +4,11 @@
  * Generates:
  * - dist/index.cjs (main CJS bundle with all icons)
  * - dist/cjs/icons/*.cjs (individual CJS files for each icon)
+ * - dist/webicon.min.js (IIFE bundle for browser)
+ *
+ * Usage:
+ *   node scripts/bundle.js          # Full bundle (for production)
+ *   node scripts/bundle.js --dev    # Only IIFE bundle (for dev preview)
  */
 
 import { readdirSync, mkdirSync, existsSync } from 'node:fs';
@@ -18,55 +23,65 @@ const DIST_DIR = join(ROOT_DIR, 'dist');
 const ICONS_DIR = join(DIST_DIR, 'icons');
 const CJS_ICONS_DIR = join(DIST_DIR, 'cjs', 'icons');
 
+// Parse CLI args
+const isDevMode = process.argv.includes('--dev');
+
 async function main() {
-  console.log('📦 Bundling CJS versions...\n');
+  if (isDevMode) {
+    console.log('📦 Building IIFE bundle (dev mode)...\n');
+  } else {
+    console.log('📦 Bundling CJS versions...\n');
+  }
 
-  // 1. Bundle main index.js to index.cjs
-  console.log('  Building dist/index.cjs...');
-  await build({
-    entryPoints: [join(DIST_DIR, 'index.js')],
-    bundle: true,
-    outfile: join(DIST_DIR, 'index.cjs'),
-    format: 'cjs',
-    platform: 'browser',
-    external: [], // Bundle everything including lit
-    minify: false,
-    sourcemap: true,
-  });
-  console.log('  ✅ dist/index.cjs');
+  // In dev mode, skip CJS bundles - only build IIFE for preview
+  if (!isDevMode) {
+    // 1. Bundle main index.js to index.cjs
+    console.log('  Building dist/index.cjs...');
+    await build({
+      entryPoints: [join(DIST_DIR, 'index.js')],
+      bundle: true,
+      outfile: join(DIST_DIR, 'index.cjs'),
+      format: 'cjs',
+      platform: 'browser',
+      external: [], // Bundle everything including lit
+      minify: false,
+      sourcemap: true,
+    });
+    console.log('  ✅ dist/index.cjs');
 
-  // 2. Bundle individual icon files to CJS
-  if (existsSync(ICONS_DIR)) {
-    const iconFiles = readdirSync(ICONS_DIR).filter((f) => f.endsWith('.js'));
+    // 2. Bundle individual icon files to CJS
+    if (existsSync(ICONS_DIR)) {
+      const iconFiles = readdirSync(ICONS_DIR).filter((f) => f.endsWith('.js'));
 
-    if (iconFiles.length > 0) {
-      // Ensure CJS icons directory exists
-      mkdirSync(CJS_ICONS_DIR, { recursive: true });
+      if (iconFiles.length > 0) {
+        // Ensure CJS icons directory exists
+        mkdirSync(CJS_ICONS_DIR, { recursive: true });
 
-      console.log(`\n  Building ${iconFiles.length} individual CJS icon(s)...`);
+        console.log(`\n  Building ${iconFiles.length} individual CJS icon(s)...`);
 
-      for (const file of iconFiles) {
-        const inputPath = join(ICONS_DIR, file);
-        const outputPath = join(CJS_ICONS_DIR, basename(file, '.js') + '.cjs');
+        for (const file of iconFiles) {
+          const inputPath = join(ICONS_DIR, file);
+          const outputPath = join(CJS_ICONS_DIR, basename(file, '.js') + '.cjs');
 
-        await build({
-          entryPoints: [inputPath],
-          bundle: true,
-          outfile: outputPath,
-          format: 'cjs',
-          platform: 'browser',
-          external: [], // Bundle everything including lit
-          minify: false,
-          sourcemap: true,
-        });
+          await build({
+            entryPoints: [inputPath],
+            bundle: true,
+            outfile: outputPath,
+            format: 'cjs',
+            platform: 'browser',
+            external: [], // Bundle everything including lit
+            minify: false,
+            sourcemap: true,
+          });
 
-        console.log(`  ✅ dist/cjs/icons/${basename(file, '.js')}.cjs`);
+          console.log(`  ✅ dist/cjs/icons/${basename(file, '.js')}.cjs`);
+        }
       }
     }
   }
 
   // 3. Build minified IIFE bundle for direct browser use
-  console.log('\n  Building dist/webicon.min.js (IIFE)...');
+  console.log(isDevMode ? '  Building dist/webicon.min.js...' : '\n  Building dist/webicon.min.js (IIFE)...');
   await build({
     entryPoints: [join(DIST_DIR, 'index.js')],
     bundle: true,
@@ -79,7 +94,7 @@ async function main() {
   });
   console.log('  ✅ dist/webicon.min.js');
 
-  console.log('\n🎉 Bundle complete!');
+  console.log(isDevMode ? '\n✅ Dev bundle complete!' : '\n🎉 Bundle complete!');
 }
 
 main().catch((err) => {

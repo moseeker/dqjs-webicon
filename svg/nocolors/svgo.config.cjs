@@ -13,12 +13,9 @@ module.exports = {
           removeViewBox: false,
           // Disable aggressive path merging to prevent line breaking/crossing issues
           mergePaths: false,
-          // Be conservative with path data conversion to preserve visual fidelity
-          convertPathData: {
-            floatPrecision: 3,
-            transformPrecision: 5,
-            makeArcs: false,  // Disable arc conversion which can cause visual issues
-          },
+          // Disable convertPathData - causes crashes on complex paths (e.g., id-card-h-1.svg)
+          // SVGO bug: reflectPoint fails on malformed/complex path data
+          convertPathData: false,
         },
       },
     },
@@ -26,12 +23,36 @@ module.exports = {
     // NOTE: Removed 'reusePaths' - can cause visual artifacts with complex icons
     // NOTE: Removed 'mergePaths' with force:true - was causing line breaks and crossing errors
     'removeStyleElement',
-    // Remove fill attributes so CSS color can control icon color
+    // Custom plugin to handle fill/stroke attributes for nocolors icons:
+    // 1. Remove fill colors from paths (let CSS control via currentColor)
+    // 2. Remove stroke colors (let CSS control via currentColor)
+    // 3. Keep/add fill="none" on stroke-based elements to prevent CSS fill
     {
-      name: 'removeAttrs',
-      params: {
-        attrs: '(fill)',
-      },
+      name: 'handleColorsForNocolors',
+      fn: () => ({
+        element: {
+          enter: (node) => {
+            const fill = node.attributes.fill;
+            const stroke = node.attributes.stroke;
+            
+            // Remove stroke color (let CSS control it)
+            if (stroke && stroke !== 'none') {
+              delete node.attributes.stroke;
+            }
+            
+            // If element has stroke-width (stroke element), ensure fill="none"
+            if (node.attributes['stroke-width']) {
+              node.attributes.fill = 'none';
+              return;
+            }
+            
+            // Remove fill attribute from non-stroke elements
+            if (fill) {
+              delete node.attributes.fill;
+            }
+          },
+        },
+      }),
     },
   ],
 };
