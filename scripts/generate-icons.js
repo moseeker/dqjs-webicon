@@ -202,7 +202,7 @@ export class ${componentName} extends LitElement {
   color?: string;
 
   @property({ type: Boolean, attribute: 'auto-crop' })
-  autoCrop = true;
+  autoCrop = false;
 
   private updateCrop() {
     const svg = this.renderRoot.querySelector('svg');
@@ -223,8 +223,24 @@ export class ${componentName} extends LitElement {
     const box = svg.getBBox();
     if (!box.width || !box.height) return;
 
-    this.aspectRatio = box.width / box.height;
-    svg.setAttribute('viewBox', box.x + ' ' + box.y + ' ' + box.width + ' ' + box.height);
+    // Find max stroke-width to account for stroke not included in getBBox
+    let maxStrokeWidth = 0;
+    svg.querySelectorAll('*').forEach((el: Element) => {
+      const sw = parseFloat(getComputedStyle(el).strokeWidth) || 0;
+      if (sw > maxStrokeWidth) maxStrokeWidth = sw;
+    });
+    const svgSw = parseFloat(getComputedStyle(svg).strokeWidth) || 0;
+    if (svgSw > maxStrokeWidth) maxStrokeWidth = svgSw;
+
+    // Add padding for stroke (half on each side)
+    const padding = maxStrokeWidth / 2;
+    const vbX = box.x - padding;
+    const vbY = box.y - padding;
+    const vbW = box.width + maxStrokeWidth;
+    const vbH = box.height + maxStrokeWidth;
+
+    this.aspectRatio = vbW / vbH;
+    svg.setAttribute('viewBox', vbX + ' ' + vbY + ' ' + vbW + ' ' + vbH);
 
     const size = this.size ?? parseFloat(getComputedStyle(this).fontSize);
     if (size && this.aspectRatio) {
@@ -305,7 +321,7 @@ export class ${componentName} extends LitElement {
   size?: number;
 
   @property({ type: Boolean, attribute: 'auto-crop' })
-  autoCrop = true;
+  autoCrop = false;
 
   private updateCrop() {
     const svg = this.renderRoot.querySelector('svg');
@@ -326,8 +342,24 @@ export class ${componentName} extends LitElement {
     const box = svg.getBBox();
     if (!box.width || !box.height) return;
 
-    this.aspectRatio = box.width / box.height;
-    svg.setAttribute('viewBox', box.x + ' ' + box.y + ' ' + box.width + ' ' + box.height);
+    // Find max stroke-width to account for stroke not included in getBBox
+    let maxStrokeWidth = 0;
+    svg.querySelectorAll('*').forEach((el: Element) => {
+      const sw = parseFloat(getComputedStyle(el).strokeWidth) || 0;
+      if (sw > maxStrokeWidth) maxStrokeWidth = sw;
+    });
+    const svgSw = parseFloat(getComputedStyle(svg).strokeWidth) || 0;
+    if (svgSw > maxStrokeWidth) maxStrokeWidth = svgSw;
+
+    // Add padding for stroke (half on each side)
+    const padding = maxStrokeWidth / 2;
+    const vbX = box.x - padding;
+    const vbY = box.y - padding;
+    const vbW = box.width + maxStrokeWidth;
+    const vbH = box.height + maxStrokeWidth;
+
+    this.aspectRatio = vbW / vbH;
+    svg.setAttribute('viewBox', vbX + ' ' + vbY + ' ' + vbW + ' ' + vbH);
 
     const size = this.size ?? parseFloat(getComputedStyle(this).fontSize);
     if (size && this.aspectRatio) {
