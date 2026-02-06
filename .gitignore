@@ -5,7 +5,7 @@ node_modules/
 .DS_Store
 
 # Auto-generated icon components
-src/icons/
+src/
 
 # Auto-generated preview page
 preview/
