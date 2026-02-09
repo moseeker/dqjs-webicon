@@ -397,7 +397,7 @@
 
     <div class="control-group">
       <label>Auto Crop:</label>
-      <button id="autoCropToggle" class="toggle-btn" data-active="false">OFF</button>
+      <button id="autoCropToggle" class="toggle-btn" data-active="true">ON</button>
     </div>
 
     <div class="stats" id="stats">0 icons</div>
@@ -443,7 +443,7 @@
     let currentSize = 20;
     let lastSearchHadResults = false;
     let selectedDemoIcon = null; // Track clicked icon for demo
-    let autoCropEnabled = false; // Auto crop toggle state
+    let autoCropEnabled = true; // Auto crop toggle state - default ON for preview
 
     // DOM elements
     const searchInput = document.getElementById('search');

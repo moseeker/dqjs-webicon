@@ -1,3 +1,6 @@
+# This is this
+all:
+  just --list
 # Push to all remotes
 push:
     #!/usr/bin/env bash
