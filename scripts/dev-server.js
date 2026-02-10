@@ -552,8 +552,9 @@ async function runGitFetch() {
 }
 
 /**
- * Check if local branch is synced with remote
+ * Check if local branch is synced with origin remote
  * Returns sync status and ahead/behind counts
+ * NOTE: Explicitly checks against origin, ignoring other remotes
  */
 async function getSyncStatus() {
   try {
@@ -565,21 +566,29 @@ async function getSyncStatus() {
       return { synced: true, error: 'Not on any branch' };
     }
 
-    // Check if tracking branch exists
-    if (!status.tracking) {
-      return { synced: true, error: 'No upstream configured' };
+    // Explicitly compare against origin/<branch>, not the tracking branch
+    const originRef = `origin/${currentBranch}`;
+
+    // Check if origin ref exists
+    try {
+      await git.raw(['rev-parse', '--verify', originRef]);
+    } catch {
+      return { synced: true, error: `No ${originRef} found` };
     }
 
-    // Get ahead/behind counts from status
-    const ahead = status.ahead || 0;
-    const behind = status.behind || 0;
+    // Get ahead/behind counts relative to origin
+    const aheadOutput = await git.raw(['rev-list', '--count', `${originRef}..HEAD`]);
+    const behindOutput = await git.raw(['rev-list', '--count', `HEAD..${originRef}`]);
+
+    const ahead = parseInt(aheadOutput.trim(), 10) || 0;
+    const behind = parseInt(behindOutput.trim(), 10) || 0;
 
     return {
       synced: ahead === 0 && behind === 0,
       ahead,
       behind,
       branch: currentBranch,
-      tracking: status.tracking
+      tracking: originRef
     };
   } catch (err) {
     console.error('Sync status error:', err.message);
