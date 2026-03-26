@@ -1,0 +1,131 @@
+name: Publish Production
+
+on:
+  issues:
+    types: [closed]
+
+permissions:
+  contents: write
+  issues: read
+
+jobs:
+  publish:
+    if: |
+      github.event.issue.title == '发版请求' &&
+      github.event.issue.state_reason != 'not_planned' &&
+      contains(github.event.issue.labels.*.name, 'release')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate release version
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          echo "Resolved release version: ${VERSION}"
+          if [[ "$VERSION" == *"sandbox"* ]]; then
+            echo "Release version should not contain sandbox token: ${VERSION}"
+            exit 1
+          fi
+
+      - name: Resolve bump type
+        id: bump_type
+        run: |
+          BODY="${{ github.event.issue.body }}"
+          BUMP_TYPE="$(printf '%s\n' "$BODY" | awk '
+            /### 版本增量/ {found=1; next}
+            found && $0 !~ /^[[:space:]]*$/ {
+              line=$0
+              found=0
+            }
+            END {print line}
+          ')"
+          BUMP_TYPE="$(printf '%s' "$BUMP_TYPE" | tr -d '\r' | grep -Eio 'major|minor|patch' | head -n 1)"
+          if [ "$BUMP_TYPE" != "patch" ] && [ "$BUMP_TYPE" != "minor" ] && [ "$BUMP_TYPE" != "major" ]; then
+            BUMP_TYPE="patch"
+          fi
+          echo "type=${BUMP_TYPE}" >> "$GITHUB_OUTPUT"
+          echo "Resolved bump type: ${BUMP_TYPE}"
+
+      - name: Bump version automatically
+        id: bump
+        run: |
+          npm_config_userconfig=/dev/null \
+          pnpm version "${{ steps.bump_type.outputs.type }}" --no-git-tag-version
+          NEW_VERSION="$(node -p "require('./package.json').version")"
+          echo "new_version=${NEW_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "📈 发布版本已自动提升为: ${NEW_VERSION}"
+
+      - name: Build package
+        run: pnpm build
+
+      - name: Push bumped version
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add package.json
+          if git diff --cached --quiet; then
+            echo "No version changes to commit"
+            exit 0
+          fi
+          git commit -m "chore(release): bump version to ${{ steps.bump.outputs.new_version }}"
+          git push origin HEAD:${{ github.event.repository.default_branch }}
+
+      - name: Configure NPM authentication
+        run: pnpm config set "${{ secrets.NPM_AUTH_URL }}"
+
+      - name: Publish to production
+        run: |
+          pnpm publish -r \
+            --registry "${{ secrets.NPM_REGISTRY_URL }}" \
+            --no-git-checks \
+            --report-summary \
+            --tag latest
+
+      - name: Send notification
+        if: ${{ success() }}
+        env:
+          WEBHOOK_KEY: ${{ secrets.WEBHOOK_NOTIFY_API_KEY }}
+        run: |
+          if [ -z "$WEBHOOK_KEY" ]; then
+            echo "No webhook key configured, skipping notification"
+            exit 0
+          fi
+
+          PKG_NAME=$(node -p "require('./package.json').name")
+          PKG_VERSION=$(node -p "require('./package.json').version")
+
+          MESSAGE="📦 正式发布成功\n\n包名: ${PKG_NAME}\n版本: ${PKG_VERSION}\nTag: latest\n\n安装: pnpm add ${PKG_NAME}@latest"
+
+          DATA=$(cat <<EOF
+          {
+            "msgtype": "text",
+            "text": {
+              "content": "${MESSAGE}"
+            }
+          }
+          EOF
+          )
+
+          curl -s -X POST \
+            -H "Content-Type: application/json" \
+            -d "$DATA" \
+            "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=${WEBHOOK_KEY}"
+
+          echo "Notification sent!"

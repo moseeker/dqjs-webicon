@@ -1,0 +1,24 @@
+name: 发版请求
+about: 关闭后触发正式发布
+title: 发版请求
+labels: [release]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: >
+        本模板为固定流程，关闭 Issue 后将触发正式发布；如需修改发布类型，仅选择下列版本增量之一。
+
+  - type: dropdown
+    id: bump_type
+    attributes:
+      label: 版本增量
+      description: 选择本次发版版本提升方式
+      options:
+        - patch
+        - minor
+        - major
+      default: patch
+    validations:
+      required: true
