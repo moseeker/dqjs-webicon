@@ -1,5 +1,5 @@
 name: 发版请求
-about: 关闭后触发正式发布
+description: 关闭后触发正式发布
 title: 发版请求
 labels: [release]
 assignees: []
@@ -9,6 +9,9 @@ body:
     attributes:
       value: >
         本模板为固定流程，关闭 Issue 后将触发正式发布；如需修改发布类型，仅选择下列版本增量之一。
+        </br>
+        </br>
+        ⚠️ 关键提示：请务必为本 Issue 追加 `release` 标签，否则 workflow 条件中会被跳过，不会触发发布。
 
   - type: dropdown
     id: bump_type
@@ -19,6 +22,5 @@ body:
         - patch
         - minor
         - major
-      default: patch
     validations:
       required: true
