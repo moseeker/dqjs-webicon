@@ -1,0 +1,32 @@
+set -eu
+
+BRANCH="$(git symbolic-ref --quiet --short HEAD || true)"
+if [ -z "$BRANCH" ]; then
+  echo "⚠️ 无法识别当前分支（可能为 detached HEAD），跳过 origin 同步检查。"
+  exit 0
+fi
+
+if ! git remote get-url origin >/dev/null 2>&1; then
+  echo "⚠️ 未配置 origin，无法确认是否已推送到 origin。"
+  echo "请执行：git remote add origin <origin-repo-url> 后再补推 origin。"
+  exit 0
+fi
+
+if ! git fetch --quiet origin "+refs/heads/$BRANCH:refs/remotes/origin/$BRANCH"; then
+  echo "⚠️ 无法拉取 origin/$BRANCH，暂不清楚该分支是否已同步。"
+  exit 0
+fi
+
+if ! git show-ref --verify --quiet "refs/remotes/origin/$BRANCH"; then
+  echo "⚠️ origin/$BRANCH 目前不存在。请按需执行：git push origin $BRANCH"
+  exit 0
+fi
+
+AHEAD=$(git rev-list --count "origin/$BRANCH".."$BRANCH")
+if [ "$AHEAD" -gt 0 ]; then
+  echo "⚠️ 检测到 ${AHEAD} 个提交未推送到 origin/${BRANCH}"
+  echo "请立即执行：git push origin ${BRANCH}"
+  exit 0
+fi
+
+echo "✅ 已确认本次推送已同步到 origin/${BRANCH}"

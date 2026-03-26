@@ -31,7 +31,8 @@
     "preview": "node scripts/generate-preview.js",
     "lint": "node scripts/check-duplicate.js",
     "test": "node scripts/check-duplicate.js",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "prepare": "husky"
   },
   "dependencies": {
     "lit": "^3.3.2"
@@ -39,6 +40,7 @@
   "devDependencies": {
     "@types/node": "^20.11.0",
     "esbuild": "^0.25.0",
+    "husky": "^9.1.7",
     "pinyin": "^4.0.0-alpha.2",
     "simple-git": "^3.30.0",
     "svgo": "^3.3.2",

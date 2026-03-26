@@ -1,0 +1,3 @@
+set -eu
+
+echo "pre-push: 推送目标不设强制限制，后续 post-push 将校验 origin 同步状态。"
