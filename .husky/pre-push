@@ -5,14 +5,23 @@ REMOTE_URL="${2:-}"
 BRANCH="$(git symbolic-ref --quiet --short HEAD || true)"
 
 if [ -z "$REMOTE_NAME" ] || [ -z "$REMOTE_URL" ]; then
+  echo ""
   echo "⚠️ pre-push: 未获取到推送远端参数，无法判断是否推送至 origin。"
-  echo "建议执行：git push origin ${BRANCH:-<当前分支>}（并在其他远端推送后补齐）。"
+  echo ""
+  echo "   建议执行：git push origin ${BRANCH:-<当前分支>}"
+  echo "   （并在其他远端推送后补齐）。"
+  echo ""
   exit 0
 fi
 
 if [ "$REMOTE_NAME" != "origin" ]; then
-  echo "🚨 推送未指向 origin：当前远端为 ${REMOTE_NAME}（${REMOTE_URL}）"
-  echo "请立即补齐：git push origin ${BRANCH:-<当前分支>}"
+  echo ""
+  echo "🚨 推送未指向 origin"
+  echo "   当前远端：${REMOTE_NAME}（${REMOTE_URL}）"
+  echo ""
+  echo "   请立即补齐："
+  echo "     git push origin ${BRANCH:-<当前分支>}"
+  echo ""
 else
   echo "✅ pre-push: 当前为 origin 推送，后续检查可直接命中同步状态。"
 fi
