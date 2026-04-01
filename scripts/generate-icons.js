@@ -501,8 +501,11 @@ async function processSingleFile(filePath, type) {
   svgContent = cleanSvg(svgContent);
   
   if (type === 'colors') {
-    // Keep viewBox, remove explicit width/height to allow CSS sizing
-    svgContent = svgContent.replace(/\s(width|height)=["'][^"']*["']/gi, '');
+    // Keep viewBox, remove explicit width/height on root SVG only to allow CSS sizing
+    svgContent = svgContent.replace(/^<svg([^>]*)>/, (match, attrs) => {
+      const cleaned = attrs.replace(/\s(width|height)=["'][^"']*["']/gi, '');
+      return '<svg' + cleaned + '>';
+    });
   }
   
   const componentName = toComponentName(filename);
@@ -608,8 +611,11 @@ async function processDirectory(dir, type, icons) {
     svgContent = cleanSvg(svgContent);
 
     if (type === 'colors') {
-      // Keep viewBox, remove explicit width/height to allow CSS sizing
-      svgContent = svgContent.replace(/\s(width|height)=["'][^"']*["']/gi, '');
+      // Keep viewBox, remove explicit width/height on root SVG only to allow CSS sizing
+      svgContent = svgContent.replace(/^<svg([^>]*)>/, (match, attrs) => {
+        const cleaned = attrs.replace(/\s(width|height)=["'][^"']*["']/gi, '');
+        return '<svg' + cleaned + '>';
+      });
     }
 
     const componentName = toComponentName(file);

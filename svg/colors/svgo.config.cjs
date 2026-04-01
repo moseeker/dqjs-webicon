@@ -20,6 +20,7 @@ module.exports = {
           convertTransform: false,     // Don't modify transforms
           inlineStyles: false,         // Don't inline styles
           minifyStyles: false,         // Don't minify styles
+          removeUnknownsAndDefaults: false, // Don't remove default attribute values (e.g. rect x/y/width/height in clipPath)
         },
       },
     },
