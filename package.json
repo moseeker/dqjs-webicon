@@ -1,6 +1,6 @@
 {
   "name": "@dqjs/webicon",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "private": false,
   "description": "SVG to Lit-based web component icon generator",
   "type": "module",
