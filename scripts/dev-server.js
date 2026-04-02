@@ -859,6 +859,13 @@ server.listen(PORT, async () => {
 ╚══════════════════════════════════════════════════════════╝
   `);
 
+  // Ensure webicon.min.js exists before serving (first run or after dist/ cleanup)
+  const bundlePath = join(ROOT_DIR, 'dist', 'webicon.min.js');
+  if (!existsSync(bundlePath)) {
+    console.log('⚠️  dist/webicon.min.js not found, running initial build...');
+    runTscAndBundle().catch(err => console.error('Initial build failed:', err.message));
+  }
+
   // Run git fetch on startup to check sync status
   await runGitFetch();
 });
